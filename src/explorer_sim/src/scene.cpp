@@ -237,41 +237,48 @@ namespace explorer_sim {
         //   pools  the lamps hanging over the aisles (see buildLamps)
         scene->add(HemisphereLight::create(0xdfe9ff, 0x3a3f47, warehousePhoto ? 0.55f : 1.0f));
 
-        auto sun = DirectionalLight::create(0xfff4e6, 1.7f);
-        const double centreX = (world.minX + world.maxX) / 2;
-        sun->position.copy(toThree(centreX - 13, -10, 17));
-        auto sunTarget = Object3D::create();
-        sunTarget->position.copy(toThree(centreX, 0, 0));
-        scene->add(sunTarget);
-        sun->setTarget(*sunTarget);
-        sun->castShadow = true;
-        sun->shadow->mapSize.set(4096, 4096);
-        sun->shadow->bias = -0.0004f;
-        sun->shadow->radius = 3.f;// soften the shadow's edge
-        auto shadowCamera = sun->shadow->camera->as<OrthographicCamera>();
-        shadowCamera->left = shadowCamera->bottom = -18;
-        shadowCamera->right = shadowCamera->top = 18;
-        shadowCamera->nearPlane = 1;
-        shadowCamera->farPlane = 60;
-        scene->add(sun);
+        // The building itself: floor, walls, ceiling. If the one made in Blender is
+        // installed it is used, with its light already in it. Otherwise the plain
+        // model below is built: a floor, and further down a box for every wall.
+        bakedBuilding = buildBakedBuilding(assets);
 
-        // Floor.
+        const double centreX = (world.minX + world.maxX) / 2;
         const auto sizeX = static_cast<float>(world.maxX - world.minX);
         const auto sizeY = static_cast<float>(world.maxY - world.minY);
-        auto floorGeometry = PlaneGeometry::create(sizeX, sizeY);
-        // Repeat the concrete every 4 m instead of stretching one photo over 26 m.
-        auto* floorUv = floorGeometry->getAttribute<float>("uv");
-        for (size_t i = 0; i < static_cast<size_t>(floorUv->count()); ++i) {
-            floorUv->setXY(i, floorUv->getX(i) * sizeX / 4.f, floorUv->getY(i) * sizeY / 4.f);
+        const Vector3 floorCentre = toThree(centreX, (world.minY + world.maxY) / 2, 0);
+        if (!bakedBuilding) {
+            auto sun = DirectionalLight::create(0xfff4e6, 1.7f);
+            sun->position.copy(toThree(centreX - 13, -10, 17));
+            auto sunTarget = Object3D::create();
+            sunTarget->position.copy(toThree(centreX, 0, 0));
+            scene->add(sunTarget);
+            sun->setTarget(*sunTarget);
+            sun->castShadow = true;
+            sun->shadow->mapSize.set(4096, 4096);
+            sun->shadow->bias = -0.0004f;
+            sun->shadow->radius = 3.f;// soften the shadow's edge
+            auto shadowCamera = sun->shadow->camera->as<OrthographicCamera>();
+            shadowCamera->left = shadowCamera->bottom = -18;
+            shadowCamera->right = shadowCamera->top = 18;
+            shadowCamera->nearPlane = 1;
+            shadowCamera->farPlane = 60;
+            scene->add(sun);
+
+            auto floorGeometry = PlaneGeometry::create(sizeX, sizeY);
+            // Repeat the concrete every 4 m instead of stretching one photo over 26 m.
+            auto* floorUv = floorGeometry->getAttribute<float>("uv");
+            for (size_t i = 0; i < static_cast<size_t>(floorUv->count()); ++i) {
+                floorUv->setXY(i, floorUv->getX(i) * sizeX / 4.f, floorUv->getY(i) * sizeY / 4.f);
+            }
+            auto floorMaterial = makeSurface(assets, "concrete_floor_worn_001", "concrete_floor_worn_001_Diffuse.jpg",
+                                             0x70757c, Color(1.45f, 1.45f, 1.5f), 0.92f, 0.f);
+            auto floor = Mesh::create(floorGeometry, floorMaterial);
+            floor->rotation.x = static_cast<float>(-pi / 2);// a PlaneGeometry stands upright: lay it down
+            floor->position.copy(floorCentre);
+            floor->receiveShadow = true;
+            scene->add(floor);
         }
-        auto floorMaterial = makeSurface(assets, "concrete_floor_worn_001", "concrete_floor_worn_001_Diffuse.jpg",
-                                         0x70757c, Color(1.45f, 1.45f, 1.5f), 0.92f, 0.f);
-        auto floor = Mesh::create(floorGeometry, floorMaterial);
-        floor->rotation.x = static_cast<float>(-pi / 2);// a PlaneGeometry stands upright: lay it down
-        floor->position.copy(toThree(centreX, (world.minY + world.maxY) / 2, 0));
-        floor->receiveShadow = true;
-        scene->add(floor);
-        buildFloorPolish(sizeX, sizeY, floor->position);
+        buildFloorPolish(sizeX, sizeY, floorCentre);
         buildLamps();
 
         // The building. One material per kind of thing.
@@ -309,6 +316,13 @@ namespace explorer_sim {
             scene->add(proxy);
             lidarTargets.push_back(proxy.get());
 
+            if (bakedBuilding && (box.kind == Box::Kind::Wall || bakedProps)) {
+                // What is LOOKED at here is in the building's own files, with its
+                // light baked in. This box stays as what the lidar's rays hit.
+                proxy->visible = false;
+                continue;
+            }
+
             if (box.kind == Box::Kind::Wall) {
                 auto cap = Mesh::create(BoxGeometry::create(static_cast<float>(box.sx) + 0.02f, 0.03f, static_cast<float>(box.sy) + 0.02f), capMaterial);
                 cap->position.copy(toThree(box.cx, box.cy, box.height + 0.015));
@@ -338,6 +352,7 @@ namespace explorer_sim {
         // Painted lines on the floor: thin slabs, a few millimetres high.
         const auto paint = makeMaterial(0xe9edf2, 0.55f);
         for (const auto& line : world.floorLines) {
+            if (bakedBuilding) break;// the lines are painted on the baked floor already
             const double dx = line.x1 - line.x0;
             const double dy = line.y1 - line.y0;
             auto slab = Mesh::create(BoxGeometry::create(static_cast<float>(std::hypot(dx, dy) + line.width), 0.004f, static_cast<float>(line.width)), paint);
@@ -429,6 +444,146 @@ namespace explorer_sim {
         robotModel->add(robotEyeCamera);
 
         buildLidarVisuals();
+    }
+
+    // The building as Blender made it (tools/blender/make_warehouse.py). Three kinds of
+    // file, in assets/warehouse:
+    //
+    //   building.glb    floor, walls, ceiling, beams, doors and lamps
+    //   props.glb       everything that stands in the building and never moves, at its place
+    //   lm_<mesh>.jpg   one lightmap for each mesh in those two files
+    //
+    // A lightmap is a picture of how much light falls on every spot of a surface.
+    // Blender's path tracer worked it out once, including the light that bounces
+    // between floor, walls and ceiling and the soft shadows under everything that
+    // stands in the building. That is the light that makes a room look like a room,
+    // and no real-time lamp can produce it. Here a surface's colour is only multiplied
+    // with it, which is the cheapest material there is: no lamp is evaluated per pixel.
+    //
+    // Each mesh has two sets of texture coordinates for this: the first lays the
+    // colour texture on, the second gives every spot of the mesh a place of its own
+    // in the lightmap.
+    //
+    // Returns false when the files are not installed. The caller then builds the
+    // plain model.
+    bool Simulator::Impl::buildBakedBuilding(const std::filesystem::path& assets) {
+        const auto dir = assets / "warehouse";
+        if (assets.empty() || !std::filesystem::exists(dir / "building.glb")) {
+            return false;
+        }
+        auto building = GLTFLoader().load(dir / "building.glb");
+        if (!building || !building->scene) {
+            return false;
+        }
+
+        // materials.txt: what each material of the building is. The building's file
+        // has only their names. One per line: "lit" (colour times lightmap) or "flat"
+        // (one colour: the lamps, which shine by themselves), the name, a colour
+        // texture from the assets folder or "-", and a tint.
+        struct Surface {
+            bool lit = true;
+            std::string texture;
+            Color tint{0.6f, 0.6f, 0.6f};
+        };
+        std::unordered_map<std::string, Surface> surfaces;
+        // The lightmaps are stored darker by this factor, so that the light right
+        // under a lamp (several times brighter than "white") fits into 8 bits.
+        float lightmapScale = 1.f;
+        {
+            std::ifstream list(dir / "materials.txt");
+            std::string kind, name, texture;
+            float r = 0, g = 0, b = 0;
+            while (list >> kind) {
+                if (kind == "lightmap_scale") {
+                    list >> lightmapScale;
+                } else if (list >> name >> texture >> r >> g >> b) {
+                    surfaces[name] = {kind == "lit", texture == "-" ? "" : texture, Color(r, g, b)};
+                }
+            }
+        }
+
+        TextureLoader textures;
+        std::unordered_map<std::string, std::shared_ptr<Texture>> pictures;
+
+        // The lightmap of the mesh called `object`: assets/warehouse/lm_<object>.jpg.
+        auto lightmapOf = [&](const std::string& object) {
+            auto& lightmap = pictures["lm_" + object];
+            if (!lightmap) {
+                // flipY false: like every picture that belongs to a glTF file, its
+                // first row is the top of the texture.
+                lightmap = textures.load(dir / ("lm_" + object + ".jpg"), ColorSpace::sRGB, false);
+                lightmap->channel = 1;// the second set of texture coordinates
+            }
+            return lightmap;
+        };
+        // The loader calls the meshes of an object "walls_low_0", "walls_low_1", ...:
+        // one per material. Cut the number off to get the object's own name.
+        auto objectOf = [](const std::string& meshName) {
+            const auto underscore = meshName.find_last_of('_');
+            const bool numbered = underscore != std::string::npos && underscore + 1 < meshName.size() &&
+                                  std::all_of(meshName.begin() + static_cast<std::ptrdiff_t>(underscore) + 1, meshName.end(),
+                                              [](unsigned char c) { return std::isdigit(c) != 0; });
+            return numbered ? meshName.substr(0, underscore) : meshName;
+        };
+
+        std::unordered_map<std::string, std::shared_ptr<Material>> made;// one per (object, material)
+        building->scene->traverseType<Mesh>([&](Mesh& mesh) {
+            const std::string object = objectOf(mesh.name);
+            const std::string name = mesh.material()->name;
+            if (object == "walls_high" || object == "ceiling") {
+                upperBuilding.push_back(&mesh);
+            }
+            auto& material = made[object + "/" + name];
+            if (!material) {
+                const Surface surface = surfaces.contains(name) ? surfaces.at(name) : Surface{};
+                auto basic = MeshBasicMaterial::create();
+                basic->color = surface.tint;
+                if (surface.lit) {
+                    if (!surface.texture.empty()) {
+                        auto& colour = pictures[surface.texture];
+                        if (!colour) {
+                            colour = textures.load(assets / surface.texture, ColorSpace::sRGB, false);
+                            colour->wrapS = colour->wrapT = TextureWrapping::Repeat;
+                            colour->anisotropy = 8;
+                        }
+                        basic->map = colour;
+                    }
+                    basic->lightMap = lightmapOf(object);
+                    basic->lightMapIntensity = lightmapScale;
+                }
+                material = basic;
+            }
+            mesh.setMaterial(material);
+        });
+        scene->add(building->scene);
+
+        // The props keep the colours and pictures they came with. Only the way they
+        // are lit changes: by their lightmap, like the building around them.
+        if (std::filesystem::exists(dir / "props.glb")) {
+            if (auto props = GLTFLoader().load(dir / "props.glb"); props && props->scene) {
+                std::unordered_map<const Material*, std::shared_ptr<Material>> baked;
+                props->scene->traverseType<Mesh>([&](Mesh& mesh) {
+                    const auto original = mesh.material();
+                    auto& material = baked[original.get()];
+                    if (!material) {
+                        auto basic = MeshBasicMaterial::create();
+                        if (const auto coloured = std::dynamic_pointer_cast<MaterialWithColor>(original)) {
+                            basic->color = coloured->color;
+                        }
+                        if (const auto pictured = std::dynamic_pointer_cast<MaterialWithMap>(original)) {
+                            basic->map = pictured->map;
+                        }
+                        basic->lightMap = lightmapOf(objectOf(mesh.name));
+                        basic->lightMapIntensity = lightmapScale;
+                        material = basic;
+                    }
+                    mesh.setMaterial(material);
+                });
+                scene->add(props->scene);
+                bakedProps = true;
+            }
+        }
+        return true;
     }
 
     // A polished floor shows a faint mirror image of what stands on it. threepp's
@@ -528,10 +683,12 @@ namespace explorer_sim {
         auto barMaterial = makeGlowing(0xfff4e0, 2.2f);
         auto barGeometry = BoxGeometry::create(1.6f, 0.05f, 0.09f);
         for (const auto& lamp : lamps) {
-            auto bar = Mesh::create(barGeometry, barMaterial);
-            bar->position.copy(toThree(lamp.x, lamp.y, lampHeight));
-            bar->rotation.y = lamp.alongX ? 0.f : static_cast<float>(pi / 2);
-            scene->add(bar);
+            if (!bakedBuilding) {// the baked building has its lamps hanging in it
+                auto bar = Mesh::create(barGeometry, barMaterial);
+                bar->position.copy(toThree(lamp.x, lamp.y, lampHeight));
+                bar->rotation.y = lamp.alongX ? 0.f : static_cast<float>(pi / 2);
+                scene->add(bar);
+            }
 
             // candela, no cut-off distance, half-angle of the cone, soft edge, and
             // decay 2: the inverse-square law of real light.
@@ -576,11 +733,23 @@ namespace explorer_sim {
         scene->add(lidarRays);
     }
 
-    // What lies beyond the walls. For the window: nothing, a plain dark backdrop.
-    // For the robot's own camera: the photo of a real warehouse, so its picture
-    // looks like a camera's and not like a model on a table.
-    void Simulator::Impl::backdrop(bool warehouse) {
-        if (warehouse && warehousePhoto) {
+    // Called before every picture: is the camera that takes it inside the building?
+    //
+    // The robot's own camera and the chase view are. They get the whole building, with
+    // the walls up to the ceiling and the lamps under it. The overview looks in from
+    // above: for it the building is cut open at door height, the way an architect
+    // draws a section, and what is beyond the walls is a plain dark backdrop.
+    //
+    // (This is done by showing and hiding, not with layers like the lidar's beams,
+    // because the mirror image in the floor is drawn by a camera of its own, which
+    // knows nothing of our layers. Hidden is hidden for every camera.)
+    void Simulator::Impl::lookFrom(bool inside) {
+        for (auto* part : upperBuilding) {
+            part->visible = inside;
+        }
+        // Without the baked building there are no walls to speak of. The robot's
+        // camera then sees the photo of a real warehouse behind them.
+        if (inside && warehousePhoto && !bakedBuilding) {
             scene->background = warehousePhoto;
         } else {
             scene->background = Color(windowBackground);
@@ -592,6 +761,7 @@ namespace explorer_sim {
     // the thread, and in the context, that created them.
     void Simulator::Impl::releaseScene() {
         lidarTargets.clear();
+        upperBuilding.clear();
         droppedMeshes.clear();
         droppedVisuals.clear();
         falling.clear();

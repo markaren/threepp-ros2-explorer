@@ -33,11 +33,13 @@
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <limits>
 #include <numbers>
 #include <random>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 namespace explorer_sim {
@@ -97,6 +99,11 @@ namespace explorer_sim {
 
         // ---- the scene (scene.cpp). Created in run(), on the thread that owns OpenGL ----
         std::shared_ptr<Scene> scene;
+        bool bakedBuilding = false;             // the building made in Blender was found, see buildBakedBuilding()
+        bool bakedProps = false;                // and with it everything that stands in it and never moves
+        // The upper part of that building: the walls above door height, and the ceiling
+        // with its beams and lamps. Shown to a camera that is inside, see lookFrom().
+        std::vector<Object3D*> upperBuilding;
         std::shared_ptr<Texture> warehousePhoto;// the HDRI, when it was found
         std::shared_ptr<Material> crateMaterial;
         std::shared_ptr<Reflector> floorPolish; // the mirror image in the floor
@@ -163,10 +170,11 @@ namespace explorer_sim {
 
         // ---- scene.cpp: what is drawn ---------------------------------------------------
         void buildScene();
+        bool buildBakedBuilding(const std::filesystem::path& assets);
         void buildFloorPolish(float sizeX, float sizeY, const Vector3& centre);
         void buildLamps();
         void buildLidarVisuals();
-        void backdrop(bool warehouse);
+        void lookFrom(bool inside);
         void addCrateVisual(const Box& crate);
         void removeDroppedVisuals();
         void releaseScene();

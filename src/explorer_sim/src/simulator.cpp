@@ -140,9 +140,9 @@ namespace explorer_sim {
 
     // Render the robot's camera and hand the picture to the mailbox.
     void Simulator::Impl::captureCamera(GLRenderer& renderer, TimePoint stamp) {
-        backdrop(true);
+        lookFrom(true);
         const bool captured = cameraSensor->capture(renderer, *scene);
-        backdrop(false);
+        lookFrom(false);
         if (!captured) {
             return;
         }

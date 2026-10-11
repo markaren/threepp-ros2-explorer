@@ -305,14 +305,14 @@ namespace explorer_sim {
             // At eye level, behind the robot, the plain backdrop would be a black void
             // above the walls: there the warehouse photo is shown instead.
             sim.robotMarker->visible = view != View::Chase;
-            sim.backdrop(view == View::Chase);
+            sim.lookFrom(view == View::Chase);
             if (effects) {
                 sim.mirrorDue = true;// one mirror image of the floor for this frame
                 composer.render(static_cast<float>(elapsed));
             } else {
                 renderer.render(*sim.scene, camera);
             }
-            sim.backdrop(false);
+            sim.lookFrom(false);
 
             // The 2D layer, over the finished picture.
             overlay.draw(renderer);
@@ -332,9 +332,9 @@ namespace explorer_sim {
 
                 renderer.setScissor(picture.x, picture.y, picture.width, picture.height);
                 renderer.setViewport(picture.x, picture.y, picture.width, picture.height);
-                sim.backdrop(true);
+                sim.lookFrom(true);
                 renderer.render(*sim.scene, *sim.robotEyeCamera);
-                sim.backdrop(false);
+                sim.lookFrom(false);
 
                 renderer.setScissorTest(false);
                 renderer.setViewport(0, 0, window.width(), window.height());
