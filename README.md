@@ -31,8 +31,8 @@ About 6 GB of disk, and a graphics card that does OpenGL 3.3 (any laptop of the 
 ten years; see `effects:=false` below if it struggles).
 
 ```powershell
-git clone <this repository>
-cd threepp_ros2_demo
+git clone https://github.com/markaren/threepp-ros2-explorer.git
+cd threepp-ros2-explorer
 pixi install -e jazzy        # ROS 2 Jazzy, the build tools, threepp for Python (about 4 GB, once)
 pixi run -e jazzy build      # compiles the seven packages (about 4 minutes the first time)
 pixi run -e jazzy demo       # starts everything

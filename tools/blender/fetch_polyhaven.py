@@ -37,7 +37,7 @@ SATURATION_CAP = 36  # of 255, for warm hues; the detector needs 110 or more
 
 
 def get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "threepp-ros2-demo-asset-fetch/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "threepp-ros2-explorer-asset-fetch/1.0"})
     with urllib.request.urlopen(req, timeout=60) as r:
         return r.read()
 

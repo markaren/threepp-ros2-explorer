@@ -6,7 +6,7 @@ what the room sees, and the point it makes.
 ## Before the students arrive
 
 ```powershell
-cd threepp_ros2_demo
+cd threepp-ros2-explorer
 pixi run -e jazzy build                                                       # nothing to do, if it was built before
 pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py auto_explore:=false
 ```

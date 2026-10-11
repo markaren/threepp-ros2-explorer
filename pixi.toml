@@ -12,7 +12,7 @@
 # See README.md for the walkthrough.
 
 [workspace]
-name = "threepp-ros2-demo"
+name = "threepp-ros2-explorer"
 description = "A robot explores an unknown warehouse: ROS 2 in C++ and Python, simulated and drawn with threepp"
 channels = ["https://prefix.dev/conda-forge"]
 platforms = ["win-64"]

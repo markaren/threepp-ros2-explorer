@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(threepp_ros2_demo LANGUAGES C CXX)
+project(threepp_ros2_explorer LANGUAGES C CXX)
 
 # This file exists ONLY so CLion (a CMake IDE) has something to open.
 # colcon still drives the real build. See "ROS2 Workspace" in the book: two build

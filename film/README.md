@@ -57,7 +57,8 @@ Neither the capture nor the second pass is part of the demo. They are a patch,
 `record.patch`, meant for a throwaway clone:
 
 ```
-git clone <this repository> clone && cd clone
+git clone https://github.com/markaren/threepp-ros2-explorer.git clone
+cd clone
 git apply film/record.patch
 pixi run -e jazzy build
 ```
