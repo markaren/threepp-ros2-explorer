@@ -415,10 +415,12 @@ class ConeSpotter(Node):
         # A MarkerArray only ever adds or changes markers. Starting with
         # DELETEALL makes every message the complete truth: a receiver that
         # shows exactly this message can never be left with stale markers.
+        # It carries no namespace on purpose. Within one message, namespace and
+        # id together must be unique: with ns 'cones' this marker and cone 0
+        # would both be ('cones', 0), and RViz marks the whole display as faulty.
         clear = Marker()
         clear.header.frame_id = 'map'
         clear.header.stamp = now
-        clear.ns = 'cones'
         clear.action = Marker.DELETEALL
 
         array = MarkerArray()
