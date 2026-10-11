@@ -37,6 +37,7 @@ class DashboardApp:
         self._safety_stop = False
         self._cone_count = 0
         self._have_map = False
+        self._framed: tuple[float, float, float, float] | None = None   # x0, y0, x1, y1 [m]
         self._have_pose = False
         self._notices: Deque[Tuple[float, str]] = deque(maxlen=3)   # (expiry, text)
 
@@ -62,19 +63,8 @@ class DashboardApp:
         grid = inbox.grid.take()
         if grid is not None:
             world.set_grid(grid)
-            if not self._have_map:
-                # The first map tells us how big the world is: frame all of it.
-                # The factor leaves room for the near edge, which perspective widens.
-                # The HUD's column covers the left part of the window, so the map is
-                # framed in what is left of it: seen from far enough away to fit there,
-                # and looked at off-centre so that it slides to the right.
-                column = self._window.hud.column_fraction()
-                view_width = 1.08 * grid.width_m / (1.0 - column)
-                self._window.look_at_area(
-                    grid.origin_x + grid.width_m / 2.0 - 0.5 * column * view_width,
-                    grid.origin_y + grid.height_m / 2.0,
-                    view_width)
-                self._have_map = True
+            self._frame_map(grid)
+            self._have_map = True
 
         pose = inbox.pose.take()
         if pose is not None:
@@ -119,6 +109,33 @@ class DashboardApp:
 
     def _show_notice(self, text: str) -> None:
         self._notices.append((time.monotonic() + NOTICE_SECONDS, text))
+
+    def _frame_map(self, grid) -> None:
+        """Place the camera so that the whole map is in view.
+
+        Our own mapper publishes a grid of a fixed size, so its first map already says
+        how big the world is. A SLAM system (mapper:=slam_toolbox) publishes a grid that
+        grows with what the robot has seen. So the map is framed again whenever it
+        reaches outside what was framed last, but only while the camera is still where
+        the last framing left it: once the operator has moved it, it is theirs.
+        """
+        x0, y0 = grid.origin_x, grid.origin_y
+        x1, y1 = x0 + grid.width_m, y0 + grid.height_m
+        if self._framed is not None:
+            fx0, fy0, fx1, fy1 = self._framed
+            inside = x0 >= fx0 - 0.5 and y0 >= fy0 - 0.5 and x1 <= fx1 + 0.5 and y1 <= fy1 + 0.5
+            if inside or not self._window.camera_untouched():
+                return
+            x0, y0, x1, y1 = min(x0, fx0), min(y0, fy0), max(x1, fx1), max(y1, fy1)
+        self._framed = (x0, y0, x1, y1)
+        # The factor leaves room for the near edge, which perspective widens.
+        # The HUD's column covers the left part of the window, so the map is
+        # framed in what is left of it: seen from far enough away to fit there,
+        # and looked at off-centre so that it slides to the right.
+        column = self._window.hud.column_fraction()
+        view_width = 1.08 * (x1 - x0) / (1.0 - column)
+        self._window.look_at_area(
+            (x0 + x1) / 2.0 - 0.5 * column * view_width, (y0 + y1) / 2.0, view_width)
 
     def _handle_keys(self) -> None:
         """Each command key asks the ROS thread to act. Nothing here blocks."""

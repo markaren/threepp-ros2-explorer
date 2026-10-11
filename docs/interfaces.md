@@ -15,6 +15,7 @@ namespace later (`/robot1/scan`, `/robot2/scan`) without touching the code.
 | `sim` | `explorer_sim` | C++ / threepp | The world and the robot hardware: moves the robot, casts the lidar, draws the truth |
 | `safety_monitor` | `explorer_safety` | C++ | Reflex layer: stops forward motion when something is too close |
 | `mapper` | `explorer_nav` | Python / numpy | Turns laser scans into an occupancy grid |
+| `slam_toolbox` | `slam_toolbox` (not ours) | C++ | Takes the mapper's place with `mapper:=slam_toolbox`: builds the map and corrects the odometry |
 | `explorer` | `explorer_nav` | Python / numpy | Picks frontiers, plans paths, follows them |
 | `cone_spotter` | `explorer_vision` | Python / OpenCV | Finds traffic cones in the camera image and places them on the map |
 | `dashboard` | `explorer_dashboard` | Python / threepp | The operator's 3D view of what the robot *believes*, and the buttons |
@@ -31,7 +32,7 @@ map ──► odom ──► base_link ──► laser
 
 | Transform | Published by | Kind | Meaning |
 |---|---|---|---|
-| `map -> odom` | `mapper` | static, identity | There is no localisation in this demo, so the map frame and the odometry frame coincide. A SLAM system would move this transform to correct odometry drift. |
+| `map -> odom` | `mapper` | static, identity | There is no localisation in this demo, so the map frame and the odometry frame coincide. A SLAM system would move this transform to correct odometry drift. With `mapper:=slam_toolbox` it is slam_toolbox that publishes it, 50 times a second, and it does move. |
 | `odom -> base_link` | `sim` | dynamic, 30 Hz | Where the robot thinks it is, from wheel odometry |
 | `base_link -> laser` | `sim` | static | Lidar mount: 0.30 m above the base, no rotation |
 | `base_link -> camera_link` | `sim` | static | Camera mount: 0.18 m forward, 0.25 m up |
@@ -58,7 +59,7 @@ threepp y.
 | `cmd_vel_nav` | `geometry_msgs/Twist` | `explorer` | `safety_monitor` | 20 Hz | reliable, depth 10 |
 | `cmd_vel` | `geometry_msgs/Twist` | `safety_monitor` | `sim` | 20 Hz | reliable, depth 10 |
 | `safety_stop` | `std_msgs/Bool` | `safety_monitor` | `dashboard` | on change | reliable, transient local, depth 1 |
-| `map` | `nav_msgs/OccupancyGrid` | `mapper` | `explorer`, `dashboard`, RViz | 2 Hz | reliable, transient local, depth 1 |
+| `map` | `nav_msgs/OccupancyGrid` | `mapper` (or `slam_toolbox`) | `explorer`, `dashboard`, RViz | 2 Hz (1 Hz) | reliable, transient local, depth 1 |
 | `plan` | `nav_msgs/Path` | `explorer` | `dashboard`, RViz | on replan | reliable, depth 1 |
 | `frontiers` | `visualization_msgs/MarkerArray` | `explorer` | `dashboard`, RViz | on replan | reliable, depth 1 |
 | `exploration_status` | `explorer_interfaces/ExplorationStatus` | `explorer` | `dashboard` | 2 Hz | reliable, depth 10 |
@@ -96,6 +97,9 @@ Details that matter:
 * **`map`**: `header.frame_id = "map"`, values `-1` unknown, `0..100` occupancy probability in
   percent. `data[row * width + col]`, where the cell centre is at
   `x = origin.x + (col + 0.5) * resolution`, `y = origin.y + (row + 0.5) * resolution`.
+  Width, height and origin may change from one message to the next: our mapper's grid is
+  a fixed rectangle, slam_toolbox's grows with what the robot has seen, and holds only
+  the values `-1`, `0` and `100`.
 * **`frontiers`**: one `SPHERE` marker per frontier cluster at its centroid, namespace
   `"frontiers"`, in frame `map`. The chosen target is a marker in namespace `"target"`.
   A `DELETEALL` marker comes first in every message.
@@ -106,7 +110,7 @@ Details that matter:
 |---|---|---|---|
 | `reset_world` | `std_srvs/Trigger` | `sim` | Robot back to the start pose, dropped obstacles removed |
 | `spawn_obstacle` | `explorer_interfaces/SpawnObstacle` | `sim` | Drops a crate at (x, y) in the simulated world's own coordinates (the `odom` frame, as long as the odometry has not drifted) |
-| `clear_map` | `std_srvs/Trigger` | `mapper` | Forgets the map |
+| `clear_map` | `std_srvs/Trigger` | `mapper` | Forgets the map. Not offered by slam_toolbox |
 | `sim/screenshot`, `dashboard/screenshot` | `std_srvs/Trigger` | `sim`, `dashboard` | Writes the current frame to a PNG, answers with its path |
 
 ## Action

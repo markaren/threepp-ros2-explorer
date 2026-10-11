@@ -102,11 +102,18 @@ see each other's robot; two explorers that pick the same frontier.
 *Start with:* two simulators' worth of robot in one `sim` process, frames prefixed
 `robot1/` and `robot2/`, one mapper that takes both scans.
 
-**14. Real SLAM.** Add `ros-jazzy-slam-toolbox` to `pixi.toml`, turn on `odom_drift`,
-and replace the mapper with `slam_toolbox`. The explorer, the dashboard and the cone
-spotter should not need to change, because they only depend on the `map` topic and the
-`map -> odom` transform.
-*Think about:* that sentence is the whole argument for standard interfaces.
+**14. Real SLAM.** `mapper:=slam_toolbox` starts slam_toolbox in the place of our
+mapper (see "Our node, or the package" in the README). Two things are left to do.
+First, `R` in the dashboard calls `clear_map`, and slam_toolbox does not offer that
+service: its own is `slam_toolbox/reset`, of another type. Write the small node that
+offers `clear_map` and passes the call on, and start it from the launch file when
+slam_toolbox is the mapper. Second, set `min_pass_through` in `slam_toolbox.yaml` back to
+its default of 2, start the demo, and explain what you see.
+*Touches:* a new node, `demo.launch.py`, `slam_toolbox.yaml`.
+*Think about:* the explorer, the dashboard and the cone spotter depend only on the `map`
+topic and the `map -> odom` transform. That is the whole argument for standard
+interfaces. It was almost enough: find the one assumption in the dashboard that was not
+written down in [interfaces.md](interfaces.md).
 
 **15. Your own project behind these topics.** The simulator publishes what a small
 robot's drivers would. If your semester project has a car with a lidar, make it publish

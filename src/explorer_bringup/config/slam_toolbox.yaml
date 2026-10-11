@@ -1,0 +1,82 @@
+# Parameters for slam_toolbox, when it takes the place of our own mapper:
+#
+#   ros2 launch explorer_bringup demo.launch.py mapper:=slam_toolbox
+#
+# This is slam_toolbox's own mapper_params_online_async.yaml with the values changed that
+# this robot needs. Every changed line says why. The rest are the package's defaults:
+# https://github.com/SteveMacenski/slam_toolbox explains them.
+
+slam_toolbox:
+  ros__parameters:
+
+    # The optimiser that straightens the map when a loop is closed
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    # Frames and topics: the names of docs/interfaces.md
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_link        # changed: the default is base_footprint, which this robot does not have
+    scan_topic: /scan
+    use_map_saver: true
+    mode: mapping
+
+    debug_logging: false
+    throttle_scans: 1
+    transform_publish_period: 0.02
+    map_update_interval: 1.0     # changed from 5.0 s: the explorer plans on this map once a second
+    resolution: 0.1              # changed from 0.05 m: the cell size of our own mapper, so the explorer sees the same kind of grid
+    restamp_tf: false
+    min_laser_range: 0.0
+    max_laser_range: 8.0         # changed from 20.0 m: the lidar_range of the simulator
+    minimum_time_interval: 0.2   # changed from 0.5 s: at 0.6 m/s the robot is 30 cm on in half a second
+    transform_timeout: 0.2
+    tf_buffer_duration: 30.0
+    stack_size_to_use: 40000000
+    enable_interactive_mode: false   # changed: only needed for the RViz plugin that moves nodes by hand
+
+    # When a scan becomes part of the map
+    use_scan_matching: true
+    use_scan_barycenter: true
+    minimum_travel_distance: 0.2     # changed from 0.5 m: a new scan every 20 cm, so a crate dropped in front
+    minimum_travel_heading: 0.2      # changed from 0.5 rad: of the robot shows up before the robot reaches it
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 10.0
+    link_match_minimum_response_fine: 0.1
+    link_scan_maximum_distance: 1.5
+    loop_search_maximum_distance: 3.0
+    do_loop_closing: true
+    loop_match_minimum_chain_size: 10
+    loop_match_maximum_variance_coarse: 3.0
+    loop_match_minimum_response_coarse: 0.35
+    loop_match_minimum_response_fine: 0.45
+
+    # Scan matching: how far around the odometry's guess the true pose is searched for
+    correlation_search_space_dimension: 0.5
+    correlation_search_space_resolution: 0.01
+    correlation_search_space_smear_deviation: 0.1
+
+    # The same, for closing a loop
+    loop_search_space_dimension: 8.0
+    loop_search_space_resolution: 0.05
+    loop_search_space_smear_deviation: 0.03
+
+    # How much a match may disagree with the odometry
+    distance_variance_penalty: 0.5
+    angle_variance_penalty: 1.0
+
+    fine_search_angle_offset: 0.00349
+    coarse_search_angle_offset: 0.349
+    coarse_angle_resolution: 0.0349
+    minimum_angle_penalty: 0.9
+    minimum_distance_penalty: 0.5
+    use_response_expansion: true
+    min_pass_through: 0          # changed from 2: a cell counts as seen after one beam, not three. The explorer
+                                 # starts from a standstill, and slam_toolbox adds no scan until the robot has
+                                 # moved: with the default, the first map is a small disc with unknown all
+                                 # around it, and the explorer finds no place worth driving to.
+    occupancy_threshold: 0.1

@@ -162,6 +162,13 @@ There is no localisation. The mapper publishes `map -> odom` as a fixed identity
 is a way of saying "I trust the odometry completely". A SLAM system is the thing that
 would move that transform.
 
+One is a launch argument away: `mapper:=slam_toolbox` starts
+[slam_toolbox](https://github.com/SteveMacenski/slam_toolbox) instead of this node. It
+matches every scan against the map built so far, publishes `map -> odom` as the
+correction that makes them agree, and straightens the whole map when the robot comes
+back to a place it has seen (a loop closure). Same topics in, same topics out. What it
+does not have is a file you can read in ten minutes, which is why this node exists.
+
 ## `explorer`: where to go and how, in Python
 
 Same package.

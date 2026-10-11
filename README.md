@@ -67,6 +67,9 @@ pixi run -e jazzy ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-arg
 
 # On a laptop without a real graphics card: no ambient occlusion, bloom or reflections
 pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py effects:=false
+
+# With a standard SLAM package in the place of our own mapper (see "Our node, or the package")
+pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py mapper:=slam_toolbox
 ```
 
 `ros2 launch explorer_bringup demo.launch.py --show-args` lists every argument.
@@ -212,6 +215,8 @@ Start the demo, open a second terminal in this folder, and enter the environment
    simulator the robot is driving as well as before. Plot the error:
    `ros2 topic echo /odom --field pose.pose.position` against `/ground_truth`. This is
    the problem that SLAM solves, and why `map -> odom` exists as a separate transform.
+   Then start again with `mapper:=slam_toolbox`, set the same drift, and watch the map
+   stay straight (see "Our node, or the package" below).
 4. **Kill the brain.** Stop the `explorer` process in Task Manager mid-drive. Half a
    second later the robot starts braking, and it stands still within a second. Find
    the code that guarantees it (it is in the simulator), and ask yourself where that
@@ -257,12 +262,56 @@ Start the demo, open a second terminal in this folder, and enter the environment
 | The simulator is slow | `ros2 launch explorer_bringup demo.launch.py effects:=false`, and a smaller window (`width` and `height` under `sim:` in [`explorer.yaml`](src/explorer_bringup/config/explorer.yaml)). Below 30 frames a second the simulated sensors slow down too |
 | `ros2 topic list` hangs or shows stale topics | The ROS daemon is confused. `ros2 daemon stop`, then try again |
 
+## Our node, or the package
+
+The nodes of the robot's brain are written from scratch here, so that each one fits on
+a few pages and can be read. Real projects take them from packages. Because the nodes
+talk through the standard message types, one can be swapped for the other, and one such
+swap is built in:
+
+```powershell
+pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py mapper:=slam_toolbox
+```
+
+starts [slam_toolbox](https://github.com/SteveMacenski/slam_toolbox) instead of
+[`mapper_node.py`](src/explorer_nav/explorer_nav/mapper_node.py). It reads the same `scan`
+and tf, and publishes the same `map` and the transform `map -> odom`. The explorer, the
+cone spotter and the dashboard do not know which of the two is running.
+
+With exact odometry the two do the same job (slam_toolbox: 338 m2 in 4.6 minutes). The
+difference shows when the odometry lies. One full run each with `odom_drift` at 1.0, the
+robot's believed position against the simulator's truth:
+
+| | our mapper | slam_toolbox |
+|---|---|---|
+| Position error, mean over the run | 5.1 m | 0.04 m |
+| Position error, worst | 10.6 m | 0.10 m |
+| Heading error, worst | 131 degrees | 3 degrees |
+| The map | bent and smeared | straight, 339 m2, six of six cones |
+
+Our mapper trusts the odometry and draws every scan where the odometry says the robot
+is. slam_toolbox compares each scan with the map it has, and moves `map -> odom` until
+they agree.
+
+What the swap took, and it is worth reading:
+
+* [`config/slam_toolbox.yaml`](src/explorer_bringup/config/slam_toolbox.yaml): nine values
+  differ from the package's defaults, and each line says why. One of them was found the
+  hard way. With the default `min_pass_through`, slam_toolbox's first map is a small disc
+  with unknown all around it, our explorer finds no place worth driving to, slam_toolbox
+  adds no scan until the robot has moved, and the run is over after three seconds.
+* The dashboard had assumed that a map never changes its size. slam_toolbox's map grows
+  with what the robot has seen, so the dashboard now frames the map again when it grows.
+* Still missing: `R` resets the simulator, but not slam_toolbox's map
+  ([exercise 14](docs/exercises.md)).
+
 ## What this is not
 
 It is a teaching demo, and it cuts the corners that would hide the ideas:
 
-* **No SLAM.** The robot trusts its odometry, which the simulator makes perfect by
-  default. Exercise 3 above shows what that hides.
+* **No SLAM by default.** The robot trusts its odometry, which the simulator makes
+  perfect by default. Exercise 3 above shows what that hides, and `mapper:=slam_toolbox`
+  what a SLAM system does about it.
 * **No physics engine.** The robot is a disc that cannot enter boxes. Enough for a lidar
   and a map, and it keeps the simulator's only dependency threepp.
 * **Nobody plans for the camera.** The explorer goes where the lidar has not seen yet.

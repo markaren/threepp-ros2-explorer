@@ -92,6 +92,10 @@ in the simulator nothing has changed.
 > The left window is right. The right window is what the robot believes. This is the
 > problem SLAM exists to solve.
 
+And it can be shown solved: stop the demo, start it with `mapper:=slam_toolbox`, set the
+same drift. The map stays straight, because slam_toolbox, not our mapper, now decides
+where `odom` sits in the `map`. Nothing else was changed.
+
 ## 6. Where your project fits (2 min)
 
 Show `src/explorer_sim/src/main.cpp`: three threads that meet only in mailboxes and

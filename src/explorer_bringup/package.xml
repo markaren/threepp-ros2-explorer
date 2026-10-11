@@ -16,6 +16,7 @@
   <exec_depend>explorer_vision</exec_depend>
   <exec_depend>explorer_dashboard</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
   <exec_depend>rviz2</exec_depend>
 
   <export>

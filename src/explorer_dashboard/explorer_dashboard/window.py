@@ -65,6 +65,14 @@ class DashboardWindow:
                                   distance * math.sin(CAMERA_ELEVATION),
                                   -centre_y + distance * math.cos(CAMERA_ELEVATION))
         self._controls.update()
+        self._placed_at = (self._camera.position.x, self._camera.position.y, self._camera.position.z)
+
+    def camera_untouched(self) -> bool:
+        """Is the camera still where look_at_area() put it? False once the operator
+        (or the follow mode) has moved it."""
+        position = self._camera.position
+        return all(abs(now - then) < 1e-3 for now, then in
+                   zip((position.x, position.y, position.z), self._placed_at))
 
     def _on_resize(self, width: int, height: int) -> None:
         self._camera.aspect = width / max(height, 1)

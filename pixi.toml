@@ -61,6 +61,9 @@ ros-jazzy-desktop = "*"
 # added for this demo: the middleware, and the standard message type for detections
 ros-jazzy-rmw-cyclonedds-cpp = "*"
 ros-jazzy-vision-msgs = "*"
+# added for this demo: a real SLAM system, to put in the place of our own mapper
+# (ros2 launch explorer_bringup demo.launch.py mapper:=slam_toolbox)
+ros-jazzy-slam-toolbox = "*"
 numpy = "*"
 
 # added for this demo: threepp for Python comes from PyPI, like any pip package.

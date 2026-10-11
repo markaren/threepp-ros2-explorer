@@ -8,6 +8,7 @@ ever does:
 | [`launch/demo.launch.py`](launch/demo.launch.py) | Starts every node. Arguments switch parts on and off |
 | [`launch/sim.launch.py`](launch/sim.launch.py) | Only the simulator and the safety monitor. `demo.launch.py` includes it |
 | [`config/explorer.yaml`](config/explorer.yaml) | The parameters worth changing, for all nodes, in one place |
+| [`config/slam_toolbox.yaml`](config/slam_toolbox.yaml) | Parameters for slam_toolbox, when it takes the mapper's place (`mapper:=slam_toolbox`) |
 | [`rviz/explorer.rviz`](rviz/explorer.rviz) | An RViz layout for the demo's topics (`rviz:=true`) |
 
 ```powershell
