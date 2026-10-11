@@ -462,7 +462,7 @@ namespace explorer_sim {
                     // white, or the bloom pass would turn it into a patch of glare.
                     vec3 reflection = min( texture2DProj( tDiffuse, vUv ).rgb, vec3( 1.0 ) );
                     vec3 toEye = normalize( cameraPosition - vWorld );
-                    float fresnel = 0.07 + 0.6 * pow( 1.0 - max( toEye.y, 0.0 ), 4.0 );
+                    float fresnel = 0.03 + 0.34 * pow( 1.0 - max( toEye.y, 0.0 ), 4.0 );
                     gl_FragColor = vec4( reflection * color * fresnel, 1.0 );
                     #include <tonemapping_fragment>
                     #include <encodings_fragment>

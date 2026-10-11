@@ -121,6 +121,9 @@ All of it is the OpenGL renderer (`GLRenderer`), nothing needs ray tracing:
 * an `EffectComposer` chain: ambient occlusion (`GTAOPass`) and bloom (`UnrealBloomPass`)
 * a `Reflector` blended over the floor with a Fresnel term, for the polished-concrete look
 * spot lights under the lamps, one shadow-casting directional light
+* a 2D layer on top (`hud.cpp`, laid out in `overlay.cpp`): cards are rounded `Shape`s, letters are triangles made
+  from the system font's outlines, so the text is sharp at any size. The dashboard gets
+  the same from threepp's ready-made `threepp.lesson.Hud`
 
 Press `P` to switch the post-processing off and see how much of the look it carries.
 The robot's own camera is rendered without it.

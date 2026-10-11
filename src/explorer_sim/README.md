@@ -23,7 +23,9 @@ ros2 param list /sim                                   # everything that can be 
 | [`src/window.cpp`](src/window.cpp) | `Simulator::run()`: the window and the frame loop. The four numbered steps at its end are the heartbeat of the simulator |
 | [`src/simulator.cpp`](src/simulator.cpp) | What happens: `step()` (physics), `castLidar()`, `captureCamera()`, and the thread-safe requests |
 | [`src/scene.cpp`](src/scene.cpp) | What is drawn: textures, models, lamps, the polished floor. Skip it unless graphics is what you came for |
-| [`src/simulator_impl.hpp`](src/simulator_impl.hpp) | The private class those three files share |
+| [`src/overlay.cpp`](src/overlay.cpp) | What the window says in words: the status card, legend, key hints and camera card, and where each goes |
+| [`src/hud.cpp`](src/hud.cpp) | The tools for that: rounded cards and text as geometry, in 180 lines |
+| [`src/simulator_impl.hpp`](src/simulator_impl.hpp) | The private class those files share |
 
 ## The rule of this package
 

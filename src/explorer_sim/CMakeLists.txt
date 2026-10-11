@@ -53,6 +53,8 @@ add_library(simulator STATIC
         src/simulator.cpp   # what happens: physics, sensors
         src/scene.cpp       # what is drawn
         src/window.cpp      # the window and the frame loop
+        src/overlay.cpp     # what the window says in words: status, legend, key hints
+        src/hud.cpp         # the tools for that: rounded cards and text as geometry
         src/world.cpp       # the building as data, collision
 )
 target_include_directories(simulator PUBLIC include)

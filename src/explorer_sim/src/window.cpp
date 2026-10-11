@@ -12,6 +12,7 @@
 // environments. Step 3 has to live on this thread because the camera is an OpenGL
 // render and OpenGL is thread-affine.
 
+#include "overlay.hpp"
 #include "simulator_impl.hpp"
 
 namespace explorer_sim {
@@ -38,6 +39,11 @@ namespace explorer_sim {
         sim.buildScene();
         bool effects = config.effects;
         sim.floorPolish->visible = effects;
+
+        // The cards and text that lie over the picture. What they show is in
+        // overlay.cpp, how they are drawn in hud.cpp.
+        Overlay overlay(static_cast<float>(config.cameraWidth) / static_cast<float>(config.cameraHeight));
+        overlay.showEffects(effects);
 
         // The window's camera. It starts with an overview of the whole building from
         // the south, framed a little to the left so the inset in the bottom right
@@ -80,6 +86,7 @@ namespace explorer_sim {
                                              sim.truth.y - 2.2 * std::sin(sim.truth.yaw), 1.9));
             }
             if (controls.enabled) controls.update();
+            overlay.showCameraName(view == View::Overview ? "overview" : view == View::Follow ? "follow" : "chase");
         };
         enterView(view);
         std::string requestedView;// the last camera asked for through the "view" parameter
@@ -125,63 +132,15 @@ namespace explorer_sim {
         composer.addPass(std::make_shared<UnrealBloomPass>(
                 Vector2(static_cast<float>(windowSize.width()), static_cast<float>(windowSize.height())), 0.2f, 0.4f, 1.2f));
 
+        // Lay the overlay out now, and again whenever the window changes size.
+        overlay.layout(windowSize.width(), windowSize.height());
         canvas.onWindowResize([&](WindowSize size) {
             camera.aspect = size.aspect();
             camera.updateProjectionMatrix();
             renderer.setSize(size);
             composer.setSize(size.width(), size.height());
+            overlay.layout(size.width(), size.height());
         });
-
-        // ---- on-screen text --------------------------------------------------------------
-        // A TextSprite with screenSpace = true is positioned in pixels, relative to an
-        // anchor on the viewport (0,0 = bottom left, 1,1 = top right).
-        FontLoader fontLoader;
-        const auto font = fontLoader.defaultFont();
-        const float textScale = monitor::contentScale().first;
-
-        //
-        // The text lives in a scene of its own, drawn last, on top of the finished
-        // picture. If it were part of the 3D scene, the post-processing would treat the
-        // letters like any other surface and darken and blur them.
-        Scene hud;
-        auto makeText = [&](float size, const Color& color, float anchorY, float offsetY, TextSprite::VerticalAlignment align) {
-            auto text = TextSprite::create(font, size * textScale);
-            text->setColor(color);
-            text->setVerticalAlignment(align);
-            text->screenSpace = true;
-            text->screenAnchor.set(0.f, anchorY);
-            text->position.set(14.f * textScale, offsetY * textScale, 0.f);
-            hud.add(text);
-            return text;
-        };
-        auto title = makeText(22, 0xffffff, 1.f, -12.f, TextSprite::VerticalAlignment::Below);
-        title->setText("GROUND TRUTH   what the world really looks like");
-        auto status = makeText(16, 0x9fe8ff, 1.f, -44.f, TextSprite::VerticalAlignment::Below);
-
-        // What the coloured overlays mean. They are drawn for the viewer only: the
-        // robot's camera does not see them.
-        auto legend = TextSprite::create(font, 14 * textScale);
-        legend->setText("pink dots: where a lidar beam ends    faint fan: the beams    ring: marks the robot");
-        legend->setColor(0xc8d0da);
-        legend->setVerticalAlignment(TextSprite::VerticalAlignment::Below);
-        legend->setHorizontalAlignment(TextSprite::HorizontalAlignment::Right);
-        legend->screenSpace = true;
-        legend->screenAnchor.set(1.f, 1.f);
-        legend->position.set(-14.f * textScale, -16.f * textScale, 0.f);
-        hud.add(legend);
-        auto help = makeText(15, 0xc8d0da, 0.f, 12.f, TextSprite::VerticalAlignment::Above);
-        help->setText("left click: drop a crate    L: lidar beams    F: camera (overview, follow, chase)    P: post-processing    R: reset");
-
-        // The caption of the inset that shows what the robot's camera sees.
-        constexpr float insetMargin = 16;
-        auto insetCaption = TextSprite::create(font, 14 * textScale);
-        insetCaption->setText("ROBOT CAMERA   published on camera/image/compressed");
-        insetCaption->setColor(0x9fe8ff);
-        insetCaption->setVerticalAlignment(TextSprite::VerticalAlignment::Above);
-        insetCaption->setHorizontalAlignment(TextSprite::HorizontalAlignment::Right);
-        insetCaption->screenSpace = true;
-        insetCaption->screenAnchor.set(1.f, 0.f);
-        hud.add(insetCaption);
 
         // ---- keyboard and mouse ----------------------------------------------------------
 
@@ -194,6 +153,7 @@ namespace explorer_sim {
             if (event.key == Key::P) {
                 effects = !effects;
                 sim.floorPolish->visible = effects;
+                overlay.showEffects(effects);
             }
         });
         canvas.addKeyListener(keys);
@@ -331,13 +291,10 @@ namespace explorer_sim {
             lastFollowed = sim.truth;
 
             statusAccumulator += elapsed;
-            if (statusAccumulator > 0.2) {// the text does not need 60 updates a second
+            if (statusAccumulator > 0.2) {// the readouts do not need 60 updates a second
                 statusAccumulator = 0;
-                char text[200];
-                std::snprintf(text, sizeof(text), "x %6.2f m   y %6.2f m   heading %4.0f deg   speed %.2f m/s   cmd_vel: %s   dropped crates: %zu",
-                              sim.truth.x, sim.truth.y, sim.truth.yaw * 180 / pi, sim.linear,
-                              sim.commandFresh ? "receiving" : "none (stopped)", sim.world.dropped.size());
-                status->setText(text);
+                overlay.update({sim.linear, sim.truth.yaw * 180 / pi, sim.truth.x, sim.truth.y,
+                                sim.commandFresh, sim.world.dropped.size()});
             }
 
             // At eye level, behind the robot, the plain backdrop would be a black void
@@ -352,38 +309,24 @@ namespace explorer_sim {
             }
             sim.backdrop(false);
 
-            // Everything from here on is drawn straight onto the finished picture, into
-            // rectangles. The scissor test confines all drawing (and clearing) to the
-            // rectangle that was set last.
+            // The 2D layer, over the finished picture.
+            overlay.draw(renderer);
+
+            // The picture in the camera card: the same scene once more, from the
+            // robot's camera, drawn into a rectangle of the window. The scissor test
+            // confines all drawing (and clearing) to the rectangle that was set last.
             {
                 const auto window = canvas.size();
+                const Overlay::Rect picture = overlay.cameraPicture();
                 renderer.setScissorTest(true);
 
-                // Two dark bands for the text to stand on, so it stays readable whatever
-                // is behind it. "Clearing" a rectangle is the cheapest way to fill it.
-                const int topBand = static_cast<int>(66 * textScale);
-                const int bottomBand = static_cast<int>(36 * textScale);
-                renderer.setClearColor(Color(0x0b0e13));
-                renderer.setScissor(0, window.height() - topBand, window.width(), topBand);
-                renderer.clear();
-                renderer.setScissor(0, 0, window.width(), bottomBand);
-                renderer.clear();
-
-                // The inset: the same scene once more, from the robot's camera, in the
-                // bottom right corner.
-                const int insetWidth = std::max(240, window.width() * 27 / 100);
-                const int insetHeight = insetWidth * config.cameraHeight / config.cameraWidth;
-                const int insetX = window.width() - insetWidth - static_cast<int>(insetMargin);
-                const int insetY = bottomBand + static_cast<int>(insetMargin);// measured from the bottom
-                insetCaption->position.set(-insetMargin, static_cast<float>(insetY + insetHeight) + 6, 0.f);
-
-                // A two pixel frame: clear a slightly larger rectangle in the frame's colour.
-                renderer.setScissor(insetX - 2, insetY - 2, insetWidth + 4, insetHeight + 4);
+                // A one pixel frame: clear a slightly larger rectangle in the frame's colour.
+                renderer.setScissor(picture.x - 1, picture.y - 1, picture.width + 2, picture.height + 2);
                 renderer.setClearColor(Color(0x19d3ff));
                 renderer.clear();
 
-                renderer.setScissor(insetX, insetY, insetWidth, insetHeight);
-                renderer.setViewport(insetX, insetY, insetWidth, insetHeight);
+                renderer.setScissor(picture.x, picture.y, picture.width, picture.height);
+                renderer.setViewport(picture.x, picture.y, picture.width, picture.height);
                 sim.backdrop(true);
                 renderer.render(*sim.scene, *sim.robotEyeCamera);
                 sim.backdrop(false);
@@ -391,12 +334,6 @@ namespace explorer_sim {
                 renderer.setScissorTest(false);
                 renderer.setViewport(0, 0, window.width(), window.height());
             }
-
-            // Last, the text, on top of everything. autoClear off: draw over the
-            // picture instead of wiping it first.
-            renderer.autoClear = false;
-            renderer.render(hud, camera);
-            renderer.autoClear = true;
 
             if (sim.pendingScreenshot) {
                 std::error_code ignored;
