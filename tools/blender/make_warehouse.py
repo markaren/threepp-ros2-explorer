@@ -10,7 +10,9 @@ It writes, into <assets>/warehouse:
                         the first repeats the surface texture, the second is the lightmap's
     props.glb           everything that stands in the building and never moves (racks,
                         pallets, desks ...), each at its place, merged into one mesh per room
-    lm_<mesh>.jpg       one lightmap per mesh: how much light falls on every spot of it
+    lm_<mesh>.jpg       one lightmap per mesh of the building: how much light falls on
+                        every spot of it
+    baked_<mesh>.jpg    one picture per mesh of the props: their colour AND the light on it
     materials.txt       what the simulator needs to know about the building's materials
 
 Why bake. An interior looks real because of light that has bounced: off the floor onto the
@@ -77,7 +79,7 @@ WINDOW_Z = (2.9, 3.7)
 
 # What stands in the building and casts shadows: world.cpp's boxes that have a model.
 # (x, y, size x, size y, height, model, quarter turns, stretched to its height?)
-PROPS = [(x, y, 3.4, 0.8, 1.35, ("rack_b" if i % 3 == 1 else "rack_a"), (i % 2) * 2, False)
+PROPS = [(x, y, 3.4, 0.8, 2.0, ("rack_b" if i % 3 == 1 else "rack_a"), (i % 2) * 2, False)
          for i, (y, x) in enumerate((y, x) for y in (5.0, 2.4, -2.4, -5.0) for x in (8.7, 13.3))]
 PROPS += [
     (-0.8, 5.6, 1.0, 1.0, 0.9, "crate", 0, True), (0.5, 6.7, 1.0, 1.0, 0.6, "crate", 0, True),
@@ -115,13 +117,16 @@ MATERIALS = {
     "door_metal": (None, (0.74, 0.77, 0.80), 1.0),
     "line_paint": (None, (0.82, 0.85, 0.88), 1.0),
     "cut_cap": (None, (0.012, 0.014, 0.018), 1.0),
-    "lamp_glow": (None, (1.0, 0.95, 0.88), 1.0),
-    "window_glow": (None, (0.78, 0.88, 1.0), 1.0),
+    "lamp_glow": (None, (1.0, 0.97, 0.93), 1.0),       # neutral white LEDs: warm light would push cardboard
+    "window_glow": (None, (0.78, 0.88, 1.0), 1.0),     # towards the orange the cone detector looks for
 }
 # Materials the simulator draws in one flat colour, without a lightmap: the things that
 # shine by themselves (brighter than white, so that its bloom pass makes them glow), and
 # the dark cut where the overview slices the walls open.
-FLAT = {"lamp_glow": (2.6, 2.45, 2.2), "window_glow": (1.5, 1.75, 2.1), "cut_cap": (0.008, 0.009, 0.012)}
+FLAT = {"lamp_glow": (2.6, 2.5, 2.35), "window_glow": (1.5, 1.75, 2.1), "cut_cap": (0.008, 0.009, 0.012)}
+# The props' pictures are twice the size of the building's lightmaps: they hold colour,
+# with labels and tape and wear, and the robot's camera gets close to them.
+PROP_PICTURE_FACTOR = 2
 EMISSION = {"lamp_glow": 170.0, "window_glow": 10.0}      # W/m2, set so the floor is well exposed
 
 
@@ -417,12 +422,183 @@ def build_building(materials, lightmap_size):
 # What stands in the building: imported only so that it casts its shadow in the bake.
 # --------------------------------------------------------------------------------------
 
-def place_props(assets):
+def dress(material):
+    """Give a prop's material the unevenness of a real surface.
+
+    The models come with one flat colour per material (or a small photo). Nothing real
+    is one flat colour. So before the bake every material gets: blotches a hand wide,
+    a fine speckle, dust that darkens it towards the floor, and, on painted steel,
+    paint worn off along the edges. All of it is computed from the place in the room,
+    so two cartons of the same cardboard do not look alike.
+
+    None of this reaches the simulator as a material. It is baked into the props'
+    picture, together with the light."""
+    tree = material.node_tree
+    bsdf = next((n for n in tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
+    if bsdf is None or tree.nodes.get("dressed"):
+        return
+    kind = material.name.split(".")[0]
+    steel = kind.startswith(("upright", "beam", "base_plate", "deck", "crate_corner")) or "steel" in kind or "metal" in kind
+    cardboard = kind.startswith(("cardboard", "plywood", "wood"))
+
+    # Only the diffuse light is baked, and a metal has none of its own: treat paint and
+    # zinc as what they look like from a few metres, a coloured matt surface.
+    for name in ("Metallic",):
+        socket = bsdf.inputs[name]
+        for link in list(socket.links):
+            tree.links.remove(link)
+        socket.default_value = 0.0
+
+    base = bsdf.inputs["Base Color"]
+    if base.is_linked:
+        colour = base.links[0].from_socket
+        tree.links.remove(base.links[0])
+    else:
+        rgb = tree.nodes.new('ShaderNodeRGB')
+        rgb.outputs[0].default_value = base.default_value[:]
+        colour = rgb.outputs[0]
+
+    where = tree.nodes.new('ShaderNodeNewGeometry')
+    where.name = "dressed"
+
+    def noise(scale, detail, low, high):
+        """A number per place in the room, between low and high."""
+        texture = tree.nodes.new('ShaderNodeTexNoise')
+        texture.inputs["Scale"].default_value = scale
+        texture.inputs["Detail"].default_value = detail
+        tree.links.new(where.outputs["Position"], texture.inputs["Vector"])
+        spread = tree.nodes.new('ShaderNodeMapRange')
+        spread.inputs[1].default_value, spread.inputs[2].default_value = 0.3, 0.7
+        spread.inputs[3].default_value, spread.inputs[4].default_value = low, high
+        tree.links.new(texture.outputs[0], spread.inputs[0])
+        return spread.outputs[0]
+
+    def times(colour_socket, factor_socket):
+        scale = tree.nodes.new('ShaderNodeVectorMath')
+        scale.operation = 'SCALE'
+        tree.links.new(colour_socket, scale.inputs[0])
+        tree.links.new(factor_socket, scale.inputs[3])
+        return scale.outputs[0]
+
+    colour = times(colour, noise(2.5, 3.0, 0.86 if cardboard else 0.91, 1.07))    # blotches
+    colour = times(colour, noise(70.0, 2.0, 0.95, 1.05))                          # speckle
+    # dust: darker over the lowest 30 cm
+    height = tree.nodes.new('ShaderNodeSeparateXYZ')
+    tree.links.new(where.outputs["Position"], height.inputs[0])
+    dust = tree.nodes.new('ShaderNodeMapRange')
+    dust.inputs[1].default_value, dust.inputs[2].default_value = 0.0, 0.30
+    dust.inputs[3].default_value, dust.inputs[4].default_value = 0.80, 1.0
+    tree.links.new(height.outputs[2], dust.inputs[0])
+    colour = times(colour, dust.outputs[0])
+
+    if steel:
+        # Paint wears off where things knock against it: along the outer edges. An
+        # ambient occlusion node, asked to look INSIDE the surface, is dark exactly
+        # there. Patches of noise decide where on the edge the paint is gone.
+        edge = tree.nodes.new('ShaderNodeAmbientOcclusion')
+        edge.inside = True
+        edge.only_local = True
+        edge.samples = 8
+        edge.inputs["Distance"].default_value = 0.012
+        worn = tree.nodes.new('ShaderNodeMapRange')         # 1 on a sharp edge, 0 on a flat face
+        worn.inputs[1].default_value, worn.inputs[2].default_value = 0.92, 0.55
+        worn.inputs[3].default_value, worn.inputs[4].default_value = 0.0, 1.0
+        tree.links.new(edge.outputs["AO"], worn.inputs[0])
+        patchy = tree.nodes.new('ShaderNodeMath')
+        patchy.operation = 'MULTIPLY'
+        tree.links.new(worn.outputs[0], patchy.inputs[0])
+        tree.links.new(noise(18.0, 3.0, 0.0, 1.0), patchy.inputs[1])
+        mix = tree.nodes.new('ShaderNodeMix')
+        mix.data_type = 'RGBA'
+        tree.links.new(patchy.outputs[0], mix.inputs[0])
+        tree.links.new(colour, mix.inputs[6])
+        mix.inputs[7].default_value = (0.42, 0.43, 0.45, 1.0)       # bare steel
+        colour = mix.outputs[2]
+
+    tree.links.new(colour, base)
+
+
+def unwrap(obj, picture_size):
+    """Give every spot of a prop mesh a place of its own in a picture: the texture
+    coordinates called "lightmap". Unlike the building these meshes are not made of
+    rectangles, so Blender cuts them into flat pieces and lays those out (Smart UV
+    Project).
+
+    The pieces are kept three pixels apart and no more. These meshes have thousands of
+    pieces (every rounded edge is one), and the room between them is room lost: at
+    twelve pixels apart, nine tenths of the picture were empty."""
+    mesh = obj.data
+    if "lightmap" in mesh.uv_layers:
+        mesh.uv_layers.remove(mesh.uv_layers["lightmap"])
+    if not mesh.uv_layers:
+        mesh.uv_layers.new(name="UVMap")
+    mesh.uv_layers.active = mesh.uv_layers.new(name="lightmap")
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=3.2 / picture_size, area_weight=0.0)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    mesh.uv_layers.active = mesh.uv_layers[0]
+
+
+def cull_hidden(props, picture_size):
+    """Throw away the faces of the props that no light reaches.
+
+    A carton on a shelf has six faces. Its underside lies on the deck and one or two
+    sides lie against its neighbours: nobody will ever see them, yet each would get its
+    share of the props' picture. About half of all faces are like that. A quick, rough
+    bake of the light finds them (where no light arrives, no eye looks either). Without
+    them the faces that ARE seen get twice the room in the picture, and the file the
+    simulator loads is smaller."""
+    size = 1024
+    for obj in props:
+        light = bake_pass(obj, size, {'DIRECT', 'INDIRECT'}, 16, margin=0).max(axis=2)
+        mesh = obj.data
+        uv = np.empty(len(mesh.loops) * 2, np.float32)
+        mesh.uv_layers["lightmap"].data.foreach_get("uv", uv)
+        uv = uv.reshape(-1, 2)
+        start = np.empty(len(mesh.polygons), np.int32)
+        count = np.empty(len(mesh.polygons), np.int32)
+        mesh.polygons.foreach_get("loop_start", start)
+        mesh.polygons.foreach_get("loop_total", count)
+        face_of = np.repeat(np.arange(len(start)), count)
+        centre = np.add.reduceat(uv, start, axis=0) / count[:, None]
+
+        def lit(points):
+            x = np.clip((points[:, 0] * size).astype(np.int64), 0, size - 1)
+            y = np.clip((points[:, 1] * size).astype(np.int64), 0, size - 1)
+            return light[y, x]
+
+        # The brightest of: the middle of the face, and a point halfway to each corner.
+        seen = np.maximum(lit(centre), np.maximum.reduceat(lit(0.5 * (uv + centre[face_of])), start))
+        # A face smaller than a few pixels of this rough bake may have missed every
+        # pixel centre and looks dark for that reason alone. Those are kept: they are
+        # the narrow bevels along edges, and take next to no room anyway.
+        nxt = np.roll(uv, -1, axis=0)
+        last = start + count - 1
+        nxt[last] = uv[start]
+        area = 0.5 * np.abs(np.add.reduceat(uv[:, 0] * nxt[:, 1] - nxt[:, 0] * uv[:, 1], start)) * size * size
+        hidden = (seen < 0.003) & (area >= 6.0)
+
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[bm.faces[i] for i in np.nonzero(hidden)[0]], context='FACES')
+        bm.to_mesh(mesh)
+        bm.free()
+        mesh.update()
+        print(f"  {obj.name}: {int(hidden.sum())} of {len(hidden)} faces are never lit, {len(mesh.polygons)} left")
+        unwrap(obj, picture_size)
+
+
+def place_props(assets, picture_size):
     """Stand every prop where world.cpp has its box, and merge them into one mesh per room.
     Returns those meshes. (The cones are placed too, but only to cast their shadows: the
     simulator draws them itself, because the robot's camera has to find them.)"""
     models = os.path.join(assets, "models")
-    rooms = {"props_dock": [], "props_hall": [], "props_offices": []}
+    rooms = {"props_dock": [], "props_hall_north": [], "props_hall_south": [], "props_offices": []}
     for x, y, sx, sy, height, model, turns, stretch in PROPS:
         path = os.path.join(models, model + ".glb")
         if not os.path.isfile(path):
@@ -452,7 +628,7 @@ def place_props(assets):
         for o in new:
             if o.parent is None:
                 o.parent = fit
-        room = "props_dock" if x < 5 else "props_hall" if x < 17 else "props_offices"
+        room = "props_dock" if x < 5 else "props_offices" if x > 17 else "props_hall_north" if y > 0 else "props_hall_south"
         rooms[room] += [o for o in new if o.type == 'MESH']
 
     merged = []
@@ -473,16 +649,7 @@ def place_props(assets):
         obj.matrix_world = world
         bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
         obj.name = obj.data.name = name
-        # Lightmap coordinates. Unlike the building these meshes are not rectangles, so
-        # Blender cuts them into flat pieces and lays those out (Smart UV Project).
-        if not obj.data.uv_layers:
-            obj.data.uv_layers.new(name="UVMap")
-        obj.data.uv_layers.active = obj.data.uv_layers.new(name="lightmap")
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.003, area_weight=0.0)
-        bpy.ops.object.mode_set(mode='OBJECT')
-        obj.data.uv_layers.active = obj.data.uv_layers[0]
+        unwrap(obj, picture_size)
         print(f"  {name}: {len(meshes)} meshes merged, {len(obj.data.polygons)} faces")
         merged.append(obj)
 
@@ -549,34 +716,160 @@ def bake_target(material):
     return target
 
 
-def bake(objects, out_dir, size):
-    scene = bpy.context.scene
-    scene.render.bake.margin = 6
+def bake_pass(obj, size, passes, samples, margin):
+    """Bake one object into a picture and return it: an array (size, size, 3) of linear
+    values, first row at the bottom.
+
+    passes: DIRECT and INDIRECT is "how much light arrives here", without the surface's
+    own colour. COLOR is that colour alone, without any light."""
+    bpy.context.scene.cycles.samples = samples
+    image = bpy.data.images.new("bake", size, size, alpha=False, float_buffer=True)
+    for material in obj.data.materials:
+        bake_target(material).image = image
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    obj.data.uv_layers.active = obj.data.uv_layers["lightmap"]
+    bpy.ops.object.bake(type='DIFFUSE', pass_filter=passes, margin=margin, use_clear=True)
+    obj.data.uv_layers.active = obj.data.uv_layers[0]
+    pixels = np.empty(size * size * 4, np.float32)
+    image.pixels.foreach_get(pixels)
+    bpy.data.images.remove(image)
+    return pixels.reshape(size, size, 4)[:, :, :3].copy()
+
+
+def save_picture(light, path, quality):
+    """Store linear light as an 8-bit JPG: divided by LIGHTMAP_SCALE, then sRGB-encoded."""
+    size = light.shape[0]
+    encoded = np.ones((size, size, 4), np.float32)
+    encoded[:, :, :3] = srgb(np.clip(light / LIGHTMAP_SCALE, 0.0, 1.0))
+    picture = bpy.data.images.new("out", size, size, alpha=False)
+    picture.pixels.foreach_set(encoded.ravel())
+    picture.filepath_raw = path
+    picture.file_format = 'JPEG'
+    picture.save(quality=quality)
+    bpy.data.images.remove(picture)
+
+
+def report(name, light):
+    lit = light[light.sum(axis=2) > 0]
+    print(f"  {name}: mean {lit.mean():.3f}, 99th percentile {np.percentile(lit, 99):.3f}, max {lit.max():.2f}")
+
+
+def bake_building(objects, out_dir, size, samples):
+    """One lightmap per mesh of the building: lm_<name>.jpg."""
     for obj in objects:
-        image = bpy.data.images.new("lm_" + obj.name, size, size, alpha=False, float_buffer=True)
-        for material in obj.data.materials:
-            bake_target(material).image = image
-        bpy.ops.object.select_all(action='DESELECT')
-        obj.select_set(True)
-        bpy.context.view_layer.objects.active = obj
-        obj.data.uv_layers.active = obj.data.uv_layers["lightmap"]
-        # DIFFUSE without COLOR is exactly "how much light arrives here": the surface's own
-        # colour is left out, because the simulator multiplies with the colour texture.
-        bpy.ops.object.bake(type='DIFFUSE', pass_filter={'DIRECT', 'INDIRECT'}, margin=6, use_clear=True)
-        pixels = np.empty(size * size * 4, np.float32)
-        image.pixels.foreach_get(pixels)
-        light = pixels.reshape(size, size, 4)[:, :, :3]
-        lit = light[light.sum(axis=2) > 0]
-        print(f"  {obj.name}: mean {lit.mean():.3f}, 99th percentile {np.percentile(lit, 99):.3f}, max {lit.max():.2f}")
-        # Emitters do not light themselves in a diffuse bake. They are drawn glowing anyway.
-        encoded = np.ones((size, size, 4), np.float32)
-        encoded[:, :, :3] = srgb(np.clip(light / LIGHTMAP_SCALE, 0.0, 1.0))
-        picture = bpy.data.images.new("out_" + obj.name, size, size, alpha=False)
-        picture.pixels.foreach_set(encoded.ravel())
-        picture.filepath_raw = os.path.join(out_dir, f"lm_{obj.name}.jpg")
-        picture.file_format = 'JPEG'
-        picture.save(quality=93)
-        obj.data.uv_layers.active = obj.data.uv_layers[0]
+        light = bake_pass(obj, size, {'DIRECT', 'INDIRECT'}, samples, margin=6)
+        report(obj.name, light)
+        save_picture(light, os.path.join(out_dir, f"lm_{obj.name}.jpg"), 93)
+
+
+def box_blur(a, radius):
+    """The mean over a square of 2 * radius + 1 pixels, with nothing beyond the border."""
+    for axis in (0, 1):
+        total = np.cumsum(a, axis=axis, dtype=np.float64)
+        total = np.concatenate([np.zeros_like(np.take(total, [0], axis=axis)), total], axis=axis)
+        n = a.shape[axis]
+        high = np.clip(np.arange(n) + radius + 1, 0, n)
+        low = np.clip(np.arange(n) - radius, 0, n)
+        a = ((np.take(total, high, axis=axis) - np.take(total, low, axis=axis)) / (2 * radius + 1)).astype(np.float32)
+    return a
+
+
+def smooth_within(light, covered):
+    """Take the path tracer's grain out of a lightmap.
+
+    Light changes slowly over a surface, so a small blur costs little. But the picture
+    is a patchwork: next to the patch of one surface lies the patch of another, or
+    nothing. So only covered pixels are averaged, and the blur reaches two pixels:
+    less than the three the patches are apart (see unwrap)."""
+    weight = covered.astype(np.float32)
+    out = np.empty_like(light)
+    for channel in range(3):
+        value = light[:, :, channel] * weight
+        blurred, share = value, weight
+        for _ in range(2):
+            blurred, share = box_blur(blurred, 1), box_blur(share, 1)
+        out[:, :, channel] = np.where(covered, blurred / np.maximum(share, 1e-6), 0.0)
+    return out
+
+
+def grow(picture, covered, pixels):
+    """Spread every patch a few pixels beyond its edge. When the simulator draws a
+    surface small and far away it reads a blend of neighbouring pixels: without this
+    the black between the patches would bleed into them as dark seams."""
+    picture, covered = picture.copy(), covered.copy()
+    for _ in range(pixels):
+        total = np.zeros_like(picture)
+        count = np.zeros(covered.shape, np.float32)
+        for shift in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            total += np.roll(picture * covered[:, :, None], shift, axis=(0, 1))
+            count += np.roll(covered, shift, axis=(0, 1))
+        new = ~covered & (count > 0)
+        picture[new] = total[new] / count[new][:, None]
+        covered |= new
+    return picture
+
+
+def bake_prop_colours(props, size):
+    """Bake every prop's own colour, with the wear dress() gave it, into a picture. Then
+    replace its forty materials by one that just shows that picture.
+
+    That is not only tidying up. When light is baked next, every ray that bounces off a
+    prop asks for the prop's colour, and the dressed materials are slow to ask (the edge
+    wear alone costs eight rays). The picture answers at once, with the same colour."""
+    colours = {}
+    for obj in props:
+        colour = bake_pass(obj, size, {'COLOR'}, 16, margin=0)
+        colours[obj.name] = colour
+        shown = bpy.data.images.new(obj.name + "_colour", size, size, alpha=False, float_buffer=True)
+        rgba = np.ones((size, size, 4), np.float32)
+        rgba[:, :, :3] = grow(colour, colour.sum(axis=2) > 1e-6, 4)
+        shown.pixels.foreach_set(rgba.ravel())
+        plain = bpy.data.materials.new(obj.name + "_colour")
+        plain.use_nodes = True
+        tree = plain.node_tree
+        bsdf = next(n for n in tree.nodes if n.type == 'BSDF_PRINCIPLED')
+        bsdf.inputs["Roughness"].default_value = 0.8
+        picture = tree.nodes.new('ShaderNodeTexImage')
+        picture.image = shown
+        where = tree.nodes.new('ShaderNodeUVMap')
+        where.uv_map = "lightmap"
+        tree.links.new(where.outputs["UV"], picture.inputs["Vector"])
+        tree.links.new(picture.outputs["Color"], bsdf.inputs["Base Color"])
+        obj.data.materials.clear()
+        obj.data.materials.append(plain)
+        for polygon in obj.data.polygons:
+            polygon.material_index = 0
+        print(f"  {obj.name}: colour baked, {100 * (colour.sum(axis=2) > 1e-6).mean():.0f} % of the picture is used")
+    return colours
+
+
+def bake_props(props, colours, out_dir, size, samples):
+    """One picture per mesh of the props, baked_<name>.jpg: its colour times its light.
+    (The building's meshes have a colour texture that repeats, so the simulator
+    multiplies. A prop's colour is different in every spot, so it is multiplied here.)"""
+    for obj in props:
+        colour = colours[obj.name]
+        covered = colour.sum(axis=2) > 1e-6
+        light = smooth_within(bake_pass(obj, size, {'DIRECT', 'INDIRECT'}, samples, margin=0), covered)
+        report(obj.name, light)
+        save_picture(grow(colour * light, covered, 8), os.path.join(out_dir, f"baked_{obj.name}.jpg"), 88)
+
+
+def strip_for_export(props):
+    """After the bake a prop mesh needs one thing only: where each spot of it is in its
+    baked picture. Its other texture coordinates go, and it gets one empty material.
+    That makes one draw call per room, and a much smaller file."""
+    plain = bpy.data.materials.new("baked")
+    for obj in props:
+        mesh = obj.data
+        for layer in [l for l in mesh.uv_layers if l.name != "lightmap"]:
+            mesh.uv_layers.remove(layer)
+        mesh.materials.clear()
+        mesh.materials.append(plain)
+        for polygon in mesh.polygons:
+            polygon.material_index = 0
 
 
 def write_materials(path):
@@ -590,17 +883,16 @@ def write_materials(path):
             f.write(f"{kind} {name} {texture or '-'} {colour[0]} {colour[1]} {colour[2]}\n")
 
 
-def export(objects, path, with_pictures):
+def export(objects, path):
     bpy.ops.object.select_all(action='DESELECT')
     for obj in objects:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = objects[0]
-    # The building goes out without pictures: the simulator has its colour textures
-    # already. The props bring theirs along. Lightmaps are never inside: the simulator
-    # finds them by the name of the mesh.
+    # Without pictures: the simulator has the building's colour textures already, and
+    # finds the baked pictures by the name of the mesh. Materials keep their names.
     bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=True, export_yup=True,
                               export_apply=True, export_texcoords=True, export_normals=True,
-                              export_materials='EXPORT', export_image_format='AUTO' if with_pictures else 'NONE')
+                              export_materials='EXPORT', export_image_format='NONE')
 
 
 def preview(path):
@@ -634,14 +926,24 @@ def main():
     materials = make_materials(assets)
     print("Building")
     objects = build_building(materials, size)
-    props = place_props(assets)
+    prop_size = size * PROP_PICTURE_FACTOR
+    props = place_props(assets, prop_size)
+    cull_hidden(props, prop_size)
+    for obj in props:
+        for material in obj.data.materials:
+            dress(material)
     if "--preview" in args:
         preview(os.path.abspath(args[args.index("--preview") + 1]))
     if "--no-bake" not in args:
         print("Baking")
-        bake(objects + props, out_dir, size)
-    export(objects, os.path.join(out_dir, "building.glb"), with_pictures=False)
-    export(props, os.path.join(out_dir, "props.glb"), with_pictures=True)
+        colours = bake_prop_colours(props, prop_size)
+        if "--colour-only" in args:
+            return
+        bake_building(objects, out_dir, size, samples)
+        bake_props(props, colours, out_dir, prop_size, samples)
+    strip_for_export(props)
+    export(objects, os.path.join(out_dir, "building.glb"))
+    export(props, os.path.join(out_dir, "props.glb"))
     write_materials(os.path.join(out_dir, "materials.txt"))
     print("Done:", out_dir)
 

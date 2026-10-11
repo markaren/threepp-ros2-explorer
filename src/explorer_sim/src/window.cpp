@@ -51,7 +51,7 @@ namespace explorer_sim {
         PerspectiveCamera camera(50, canvas.aspect(), 0.1f, 200);
         camera.layers.enable(debugLayer);
         const double centreX = (sim.world.minX + sim.world.maxX) / 2;
-        const Vector3 overviewPosition = toThree(centreX + 3.0, -18.2, 19.2);
+        const Vector3 overviewPosition = toThree(centreX + 3.0, -14.6, 22.1);// steep: it has to see into the aisles
         const Vector3 overviewTarget = toThree(centreX + 3.0, -1.9, 0);
         camera.position.copy(overviewPosition);
         OrbitControls controls(camera, canvas);

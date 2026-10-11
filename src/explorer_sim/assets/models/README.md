@@ -17,11 +17,11 @@ Sizes are X x Y x Z in ROS axes, measured from the exported files (bounding box,
 | File | What it is | Size (m) | Triangles | File size | Made from | Named nodes |
 |---|---|---|---|---|---|---|
 | `robot.glb` | the robot: differential drive, lidar on a mast, forward camera | 0.440 x 0.428 x 0.326 | 8800 | 215 kB | `make_models.py` | `robot` (root), `body`, `wheel_left`, `wheel_right`, `lidar_head` |
-| `rack_a.glb` | one bay of pallet racking, mostly cartons | 3.400 x 0.800 x 1.350 | 8708 | 240 kB | `make_models.py` | `rack_a` |
-| `rack_b.glb` | the same bay, mostly totes and wrapped goods | 3.400 x 0.800 x 1.350 | 10260 | 256 kB | `make_models.py` | `rack_b` |
-| `pallet_a.glb` | 1200 x 800 pallet with strapped cartons | 1.200 x 0.800 x 0.885 | 3672 | 98 kB | `make_models.py` | `pallet_a` |
-| `pallet_b.glb` | 1200 x 800 pallet with stacked totes | 1.200 x 0.800 x 0.820 | 5988 | 119 kB | `make_models.py` | `pallet_b` |
-| `crate.glb` | shipping crate, a UNIT cube that the simulator scales per axis | 1.000 x 1.000 x 1.000 | 3132 | 67 kB | `make_models.py` | `crate` |
+| `rack_a.glb` | one bay of shelving, four levels, mostly cartons | 3.400 x 0.800 x 2.181 | 13124 | 383 kB | `make_models.py` | `rack_a` |
+| `rack_b.glb` | the same bay, mostly totes and wrapped goods | 3.400 x 0.800 x 2.186 | 15168 | 376 kB | `make_models.py` | `rack_b` |
+| `pallet_a.glb` | 1200 x 800 pallet with strapped cartons | 1.200 x 0.800 x 0.886 | 3672 | 101 kB | `make_models.py` | `pallet_a` |
+| `pallet_b.glb` | 1200 x 800 pallet with stacked totes | 1.200 x 0.800 x 0.820 | 5988 | 121 kB | `make_models.py` | `pallet_b` |
+| `crate.glb` | plywood shipping crate, a UNIT cube that the simulator scales per axis | 1.000 x 1.000 x 1.000 | 3132 | 69 kB | `make_models.py` | `crate` |
 | `sign_aisle_A.glb` | aisle sign "A" | 0.0225 x 0.450 x 0.450 | 308 | 13 kB | `make_models.py` | `sign_aisle_A` |
 | `sign_aisle_B.glb` | aisle sign "B" | 0.0225 x 0.450 x 0.450 | 592 | 23 kB | `make_models.py` | `sign_aisle_B` |
 | `sign_aisle_C.glb` | aisle sign "C" | 0.0225 x 0.450 x 0.450 | 460 | 18 kB | `make_models.py` | `sign_aisle_C` |
@@ -37,7 +37,7 @@ Sizes are X x Y x Z in ROS axes, measured from the exported files (bounding box,
 | `ladder.glb` | sectioned ladder, standing upright | 0.178 x 0.661 x 2.135 | 29140 | 1020 kB | [ladder_sectioned_01](https://polyhaven.com/a/ladder_sectioned_01), CC0 | `ladder` |
 | `stool.glb` | round stool | 0.473 x 0.448 x 0.458 | 6532 | 307 kB | [metal_stool_02](https://polyhaven.com/a/metal_stool_02), CC0 | `stool` |
 
-The whole folder is about 4.5 MB.
+The whole folder is about 4.8 MB.
 
 ## The robot's moving parts
 
@@ -71,21 +71,28 @@ pixi run -e jazzy python tools/blender/fetch_polyhaven.py <work folder>
 
 ## Colours and the cone detector
 
-`explorer_vision` finds the traffic cones by colour: OpenCV hue 3 to 24 (red-orange to amber and
-brown), saturation 110 or more, value 40 or more. Nothing in this folder may land in that band,
-so the racks are blue and grey instead of the usual orange, and "wood" and "cardboard" are pale,
-desaturated tones.
+`explorer_vision` finds the traffic cones by colour: OpenCV hue 3 to 14 (red-orange to orange),
+saturation 110 or more, value 40 or more. Nothing in this folder may land in that band, so the
+racks are blue and grey instead of the usual orange.
 
-Two things are less obvious, and both come from the warm warehouse photo that lights the scene:
+Cardboard and wood come close, and how close is the interesting part. They are yellow-brown: on
+the colour wheel they sit at 38 to 41 degrees, a cone at 25. In OpenCV's halved degrees that is
+19 to 20 against 12. In the light they are pale. In a shadow, lit only by what bounces off more
+cardboard, they are dark and as strongly coloured as a cone: saturation and brightness cannot
+tell the two apart there. Hue can, because a shadow darkens a colour and does not turn it.
+
+That is measured, not assumed. Every camera picture of one full run of the demo (2245 of them)
+was sorted into "columns where a real cone stands" and "the rest", using the robot's true pose.
+Among the strongly coloured pixels, cones lie at hue 5 to 13 and the rest at 15 and above, mostly
+17 to 21. With the detector's upper limit at 14 that run has 715 detections and every one is a
+cone. With the limit at 24, where it was while cardboard and wood were kept artificially pale,
+53 more were cartons and pallets.
+
+Two things are less obvious, and both come from the warm warehouse photo that lights the robot
+and what is dropped into the building:
 
 * A black or mirror-like surface shows little but its reflections, and those are dark amber:
   inside the band. So the robot's dark parts are a matt charcoal blue, not gloss black.
 * The Poly Haven props were changed for the same reason: warm hues turned into cool greys,
   blacks lifted, metal switched off, everything matt, textures shrunk to 512 px. The tote is
   orange as it comes (a material colour, not its texture) and is blue here.
-
-Each model was rendered with threepp from four sides under the simulator's own lighting (the
-warehouse HDRI at 0.75, the hemisphere light, the white sun, Neutral tone mapping) and the frames
-were run through `cv2.inRange(hsv, (3, 110, 40), (24, 255, 255))`: no pixel of any model matched.
-The closest are the pale pallet wood and cardboard, at a saturation of 78 of 255 where the
-detector needs 110.

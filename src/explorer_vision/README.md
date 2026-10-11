@@ -178,7 +178,7 @@ the value.
 
 | Parameter | Default | Try this |
 |---|---|---|
-| `hue_min`, `hue_max` | 3, 24 | Narrow the range until the shaded side of the cone drops out of the box. |
+| `hue_min`, `hue_max` | 3, 14 | Narrow the range until the shaded side of the cone drops out of the box. |
 | `saturation_min` | 110 | Raise it: the cone's anti-aliased edge goes first. |
 | `value_min` | 40 | Raise it to 150: only the sunlit side is left. Is that still cone-shaped? |
 | `min_blob_area` | 80.0 | Raise it: distant cones are no longer detected. |

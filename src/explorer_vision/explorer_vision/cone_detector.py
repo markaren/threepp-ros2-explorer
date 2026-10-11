@@ -34,10 +34,20 @@ class DetectorThresholds:
     light, the cone's pixels measure hue 6..12, saturation above 125 and
     brightness above 100 (see test/data/rendered_cones.png), so the limits
     below leave a margin on every side.
+
+    The upper hue limit is the one that matters most, because a warehouse is
+    full of things that are ALMOST orange: cardboard and wood. They are
+    yellow-brown, hue 17 to 21 here, and in a shadow they are dark and as
+    strongly coloured as a cone. Saturation and brightness cannot tell them
+    from a cone, hue can. Measured over one run of the demo (2245 pictures),
+    cones lie at hue 5 to 13, cardboard and wood from 15 up and mostly at
+    17 to 21. With the limit at 14 that run has 716 detections, all of them
+    cones. With the limit at 24, where it used to be, a hundred or so of
+    them were cartons and pallets.
     """
 
     hue_min: int = 3
-    hue_max: int = 24
+    hue_max: int = 14
     saturation_min: int = 110
     value_min: int = 40
     # Blobs with fewer pixels than this are noise, or cones too far away to

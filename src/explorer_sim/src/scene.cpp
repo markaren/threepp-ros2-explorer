@@ -418,6 +418,17 @@ namespace explorer_sim {
         robotMarker->rotation.x = static_cast<float>(-pi / 2);
         robotMarker->layers.set(debugLayer);// for the human only
         scene->add(robotMarker);
+        // The same ring once more, faint, and drawn whatever stands in front of it: in
+        // the overview the robot is then still found when it is behind a rack.
+        auto ghostMaterial = MeshBasicMaterial::create();
+        ghostMaterial->color = Color(0.2f, 1.9f, 2.4f);
+        ghostMaterial->transparent = true;
+        ghostMaterial->opacity = 0.22f;
+        ghostMaterial->depthTest = false;
+        auto ghost = Mesh::create(RingGeometry::create(0.40f, 0.45f, 64), ghostMaterial);
+        ghost->layers.set(debugLayer);
+        ghost->renderOrder = 10;
+        robotMarker->add(ghost);
 
         // The robot's camera: threepp's CameraSensor renders the scene from its own
         // pose into an off-screen target and reads the pixels back.
@@ -451,7 +462,8 @@ namespace explorer_sim {
     //
     //   building.glb    floor, walls, ceiling, beams, doors and lamps
     //   props.glb       everything that stands in the building and never moves, at its place
-    //   lm_<mesh>.jpg   one lightmap for each mesh in those two files
+    //   lm_<mesh>.jpg   one lightmap for each mesh of the building
+    //   baked_<mesh>.jpg  one picture for each mesh of the props: colour and light in one
     //
     // A lightmap is a picture of how much light falls on every spot of a surface.
     // Blender's path tracer worked it out once, including the light that bounces
@@ -557,24 +569,20 @@ namespace explorer_sim {
         });
         scene->add(building->scene);
 
-        // The props keep the colours and pictures they came with. Only the way they
-        // are lit changes: by their lightmap, like the building around them.
+        // The props have one picture per room, and it holds everything: their own
+        // colours, worn and dusty the way Blender made them, times the light that falls
+        // on them. Nothing is left to compute but to show it.
         if (std::filesystem::exists(dir / "props.glb")) {
             if (auto props = GLTFLoader().load(dir / "props.glb"); props && props->scene) {
-                std::unordered_map<const Material*, std::shared_ptr<Material>> baked;
+                std::unordered_map<std::string, std::shared_ptr<Material>> baked;// one per room
                 props->scene->traverseType<Mesh>([&](Mesh& mesh) {
-                    const auto original = mesh.material();
-                    auto& material = baked[original.get()];
+                    const std::string object = objectOf(mesh.name);
+                    auto& material = baked[object];
                     if (!material) {
                         auto basic = MeshBasicMaterial::create();
-                        if (const auto coloured = std::dynamic_pointer_cast<MaterialWithColor>(original)) {
-                            basic->color = coloured->color;
-                        }
-                        if (const auto pictured = std::dynamic_pointer_cast<MaterialWithMap>(original)) {
-                            basic->map = pictured->map;
-                        }
-                        basic->lightMap = lightmapOf(objectOf(mesh.name));
-                        basic->lightMapIntensity = lightmapScale;
+                        basic->map = textures.load(dir / ("baked_" + object + ".jpg"), ColorSpace::sRGB, false);
+                        basic->map->anisotropy = 8;
+                        basic->color = Color(lightmapScale, lightmapScale, lightmapScale);
                         material = basic;
                     }
                     mesh.setMaterial(material);

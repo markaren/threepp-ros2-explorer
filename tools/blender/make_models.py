@@ -216,8 +216,13 @@ def export(path):
 
 CYAN = (25, 211, 255)
 TEAL = (42, 157, 143)
-CARDBOARD = [(198, 188, 170), (186, 179, 164), (208, 201, 188), (222, 222, 216), (172, 176, 176), (178, 190, 202)]
-WOOD = [(201, 189, 168), (195, 184, 165), (207, 196, 176)]
+# Cardboard and wood are kraft and pine, as they are. What keeps the cone detector from
+# taking them for cones is their HUE: a cone is orange (25 degrees on the colour wheel),
+# these are yellow-brown, at 38 to 41 degrees. The detector's limit lies at 30 degrees.
+# In a shadow they turn dark and strongly coloured, but they keep their hue.
+CARDBOARD = [(202, 181, 145), (196, 176, 141), (208, 187, 150), (190, 170, 136), (232, 230, 224), (178, 184, 188)]
+WOOD = [(206, 188, 150), (198, 180, 144), (212, 193, 155)]
+PLYWOOD = [(204, 187, 152), (188, 171, 138), (124, 112, 90)]     # panel, batten, the gaps between boards
 TOTE = [(38, 92, 172), (52, 146, 92), (112, 122, 132), (30, 128, 140), (36, 60, 120)]
 
 
@@ -391,8 +396,9 @@ def wrapped(part, x0, x1, y0, y1, z0, h, rng):
         part.add(box((w - 0.026, d - 0.026, 0.012), (cx, cy, zk), bevel=0.005), band)
 
 
-def fill_shelf(part, rng, z0, h_min, h_max, weights, allow_gaps):
-    """Fills one load level of a rack bay from end to end with a random mix of goods."""
+def fill_shelf(part, rng, z0, h_min, h_max, weights, allow_gaps, empty=0.15):
+    """Fills one load level of a rack bay from end to end with a random mix of goods.
+    `empty` is how likely a place is left free, where gaps are allowed."""
     x_lo, x_hi, gap = -1.585, 1.585, 0.024
     widths = []
     while sum(widths) < (x_hi - x_lo) - 0.3:
@@ -401,20 +407,20 @@ def fill_shelf(part, rng, z0, h_min, h_max, weights, allow_gaps):
     widths = [w * scale for w in widths]
     kinds = [k for k, n in weights.items() for _ in range(n)]
     x = x_lo
-    gaps_left = 1 if allow_gaps else 0  # at most one empty place per level
+    gaps_left = (1 if empty <= 0.15 else len(widths)) if allow_gaps else 0  # usually at most one empty place per level
     for w in widths:
         x0, x1 = x, x + w
         x = x1 + gap
         kind = rng.choice(kinds)
         d = rng.uniform(0.54, 0.64)
         cy = rng.uniform(-0.012, 0.012)
-        if gaps_left and rng.random() < 0.15:
+        if gaps_left and rng.random() < empty:
             gaps_left -= 1
             continue
         if kind == 'tote':
             n = max(1, int((w + 0.01) / 0.40))
             tw = (w - 0.012 * (n + 1)) / n
-            layers = 2 if (h_min > 0.25 or rng.random() < 0.6) else 1
+            layers = 2 if h_max > 0.3 and (h_min > 0.25 or rng.random() < 0.6) else 1
             th = min(0.22, (h_max - 0.02) / layers)
             col = rng.randrange(len(TOTE))
             for i in range(n):
@@ -443,8 +449,12 @@ def fill_shelf(part, rng, z0, h_min, h_max, weights, allow_gaps):
 
 
 # ----------------------------------------------------------------------------------------------
-# pallet racking, one bay: 3.4 x 0.8 m footprint, 1.35 m high
+# shelving, one bay: 3.4 x 0.8 m footprint, 2 m high, four load levels
 # ----------------------------------------------------------------------------------------------
+
+
+RACK_H = 2.0
+RACK_LEVELS = (0.12, 0.74, 1.36, 1.96)      # the top of each pair of beams
 
 
 def build_rack(out_dir, name, seed, weights_low, weights_high):
@@ -460,32 +470,38 @@ def build_rack(out_dir, name, seed, weights_low, weights_high):
     ux, uy = 1.655, 0.365  # upright centres; the base plates reach the footprint exactly
     for sx in (-1, 1):
         for sy in (-1, 1):
-            p.add(box((0.08, 0.06, 1.345), (sx * ux, sy * uy, 0.005 + 1.345 / 2), bevel=0.007), blue)
+            p.add(box((0.08, 0.06, RACK_H - 0.005), (sx * ux, sy * uy, 0.005 + (RACK_H - 0.005) / 2), bevel=0.007), blue)
             p.add(box((0.09, 0.07, 0.008), (sx * 1.655, sy * 0.365, 0.004), bevel=0.0), plate)
             p.add(box((0.12, 0.10, 0.006), (sx * 1.64, sy * 0.35, 0.003), bevel=0.0), plate)
             k = 0
             z = 0.06
-            while z < 1.30:  # the punched slots the beams hook into
+            while z < RACK_H - 0.05:  # the punched slots the beams hook into
                 p.add(box((0.014, 0.003, 0.032), (sx * ux + (0.016 if k % 2 else -0.016), sy * (uy + 0.03), z), bevel=0.0), slot)
                 z += 0.05
                 k += 1
         # the end frame: horizontal and diagonal bracing between the two uprights
-        for z in (0.15, 0.70, 1.25):
+        ties = (0.15, 0.75, 1.35, RACK_H - 0.07)
+        for z in ties:
             p.add(box((0.028, 0.67, 0.028), (sx * ux, 0, z), bevel=0.004), blue)
-        for (z0, z1, flip) in ((0.15, 0.70, 1), (0.70, 1.25, -1)):
+        for i, (z0, z1) in enumerate(zip(ties, ties[1:])):
+            flip = 1 if i % 2 == 0 else -1
             dy, dz = 0.67 * flip, z1 - z0
             p.add(box((0.024, math.hypot(dy, dz), 0.024), (sx * ux, 0, (z0 + z1) / 2), bevel=0.004,
                       rot=Matrix.Rotation(math.atan2(dz, dy), 4, 'X')), blue)
-    # three pairs of beams; the lower two carry a deck and goods
-    for top in (0.12, 0.72, 1.30):
+    # four pairs of beams, each with a deck and goods
+    for top in RACK_LEVELS:
         for sy in (-1, 1):
-            p.add(box((3.23, 0.05, 0.10 if top < 1.0 else 0.08), (0, sy * uy, top - (0.05 if top < 1.0 else 0.04)), bevel=0.008), galv)
+            p.add(box((3.23, 0.05, 0.10), (0, sy * uy, top - 0.05), bevel=0.008), galv)
             for sx in (-1, 1):
                 p.add(box((0.012, 0.064, 0.125), (sx * 1.609, sy * uy, top - 0.05), bevel=0.003), plate)
-    for top in (0.12, 0.72):
         p.add(box((3.23, 0.70, 0.018), (0, 0, top - 0.004), bevel=0.003), deckm)
-    fill_shelf(p, rng, 0.125, 0.36, 0.46, weights_low, allow_gaps=False)   # solid from 0.125 to at least 0.485 m
-    fill_shelf(p, rng, 0.725, 0.16, 0.44, weights_high, allow_gaps=True)
+    # The lowest level is filled without a gap from 0.125 m to at least 0.485 m: that is
+    # the height the lidar scans at, and it must see a rack, not look through one.
+    fill_shelf(p, rng, RACK_LEVELS[0] + 0.005, 0.36, 0.46, weights_low, allow_gaps=False)
+    fill_shelf(p, rng, RACK_LEVELS[1] + 0.005, 0.16, 0.46, weights_high, allow_gaps=True)
+    fill_shelf(p, rng, RACK_LEVELS[2] + 0.005, 0.16, 0.44, weights_low, allow_gaps=True)
+    # On top: a few low things, so that nothing reaches above 2.2 m.
+    fill_shelf(p, rng, RACK_LEVELS[3] + 0.005, 0.12, 0.22, {'box': 2, 'tote': 2}, allow_gaps=True, empty=0.45)
     p.finish()
     export(os.path.join(out_dir, name + ".glb"))
 
@@ -568,9 +584,9 @@ def tote_x(part, cx, cy, z0, colour):
 
 def build_crate(out_dir):
     new_scene()
-    frame = mat("crate_teal", TEAL, roughness=0.7)
-    panel = mat("crate_teal_panel", (36, 138, 126), roughness=0.78)
-    groove = mat("crate_groove", (22, 88, 82), roughness=0.85)
+    frame = mat("plywood_batten", PLYWOOD[1], roughness=0.75)
+    panel = mat("plywood_panel", PLYWOOD[0], roughness=0.8)
+    groove = mat("plywood_gap", PLYWOOD[2], roughness=0.85)
     steel = mat("crate_corner_steel", (150, 158, 166), roughness=0.4, metallic=0.4)
     p = Part("crate")
     t = 0.09  # frame board width

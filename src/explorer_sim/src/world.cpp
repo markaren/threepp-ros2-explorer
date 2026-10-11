@@ -117,7 +117,7 @@ namespace explorer_sim {
                 // Two differently loaded models, alternated so the rows do not look cloned.
                 const char* model = (rackCount % 3 == 1) ? "rack_b" : "rack_a";
                 // Every other bay is turned half a turn, which shows its other side.
-                w.boxes.push_back({x, y, 3.4, 0.8, 1.35, Kind::Rack, model, (rackCount % 2) * 2});
+                w.boxes.push_back({x, y, 3.4, 0.8, 2.0, Kind::Rack, model, (rackCount % 2) * 2});
                 ++rackCount;
             }
         }
