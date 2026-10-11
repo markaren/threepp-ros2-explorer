@@ -8,7 +8,10 @@ namespace explorer_sim {
     namespace {
 
         constexpr double wallThickness = 0.2;
-        constexpr double wallHeight = 1.4;// low enough to look over from the 3D view
+        // The height of a wall's box. The lidar only needs it to be above its scan
+        // plane. It is also the height of the walls in the plain model, which is low
+        // enough to look over. (The building made in Blender has real walls, 4.2 m.)
+        constexpr double wallHeight = 1.4;
 
         // A wall along the y axis at a fixed x, from y0 to y1.
         Box wallAlongY(double x, double y0, double y1) {

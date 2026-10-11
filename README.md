@@ -82,9 +82,18 @@ pixi run -e jazzy test       # the unit tests of the mapping, planning and visio
 
 ## The two windows
 
-**The simulator: ground truth.** What a camera on the ceiling would see.
+**The simulator: ground truth.** The overview shows the building cut open at door
+height, the way an architect draws a section. Press `F` twice for the chase view and you
+are inside it, under the ceiling, as in the picture at the top of this page.
 
 ![The simulator, overview](docs/images/sim_overview.png)
+
+The building and everything that stands in it were made in Blender, and lit there: its
+path tracer worked out once how the light of the lamps and windows bounces between
+floor, walls and ceiling, and the simulator shows the result. That is why it looks like
+a room and still runs on a laptop without ray tracing.
+[docs/architecture.md](docs/architecture.md#what-makes-it-look-the-way-it-does) says how
+it works and what it costs.
 
 | Input | Effect |
 |---|---|
@@ -236,6 +245,7 @@ Start the demo, open a second terminal in this folder, and enter the environment
 7. **Watch the detector work.** The dashboard's camera panel shows the picture with a
    box around every cone the detector finds. Now loosen it:
    `ros2 param set /cone_spotter saturation_min 30`, and see what else is "orange".
+   Then `ros2 param set /cone_spotter hue_max 24`: cartons and pallets become cones.
    (The same picture is the topic `/camera/annotated/compressed`, for `rqt_image_view`.)
 8. **Break the QoS on purpose.** In `safety_monitor.cpp`, subscribe to `scan` with a
    plain `10` instead of `SensorDataQoS()`. Rebuild, run. No data, and all the node
@@ -383,9 +393,15 @@ It is a teaching demo, and it cuts the corners that would hide the ideas:
   between four and six of the six (6, 6, 6, 5, 6, 4, 4, 5), and every cone it did find
   was placed within a few centimetres. Fixing that is one of the
   [exercises](docs/exercises.md).
-* **The cone detector is a colour threshold**, not a neural network. The interface is
-  the one the book uses (`vision_msgs/Detection2DArray`), so swapping in the ONNX
-  detector from Part 6 changes one Python module.
+* **The cone detector is a colour threshold**, not a neural network. It works because
+  nothing else in the warehouse is orange. Cardboard and wood come close, and what
+  keeps them out is one number that was measured, not guessed (the story is in
+  [`assets/models/README.md`](src/explorer_sim/assets/models/README.md#colours-and-the-cone-detector)).
+  The interface is the one the book uses (`vision_msgs/Detection2DArray`), so swapping
+  in the ONNX detector from Part 6 changes one Python module.
+* **The light does not move.** The building's light was computed once. That is right
+  for walls and racks, which stand still. The robot, the cones and a crate you drop are
+  lit separately, by ordinary real-time lamps, and cast no shadow on the floor.
 * **Windows only**, as tested. Nothing in the code is Windows-specific except one
   function in the dashboard (the mouse position for `G`), but `pixi.toml` lists only
   `win-64` and `build.bat` is a batch file.
@@ -395,7 +411,9 @@ It is a teaching demo, and it cuts the corners that would hide the ideas:
 [`film/`](film/README.md) holds the script of a short film about this demo: the node graph,
 where threepp sits in a ROS 2 project, how to run it, and how it was made. It is a threepp
 program too (`threepp.lesson`), and its pictures come from one recorded run. The footage is
-not in the repository; the film's README says how it was recorded.
+not in the repository; the film's README says how it was recorded. The film shows the
+warehouse as it looked before it was rebuilt in Blender: half-height walls and plain
+real-time light.
 
 ## Credits
 
@@ -404,7 +422,8 @@ not in the repository; the film's README says how it was recorded.
 * ROS 2 Jazzy through [RoboStack](https://robostack.github.io/) and [pixi](https://pixi.sh).
 * Textures, the HDRI and some props from [Poly Haven](https://polyhaven.com), CC0. The
   racks, pallets, crate, signs and the robot were modelled with Blender scripts in
-  [`tools/blender`](tools/blender). Details in
+  [`tools/blender`](tools/blender), and so was the building, whose light was baked with
+  [Blender](https://www.blender.org)'s Cycles. Details in
   [`src/explorer_sim/assets`](src/explorer_sim/assets/README.md).
 
 MIT licence, see [LICENSE](LICENSE).

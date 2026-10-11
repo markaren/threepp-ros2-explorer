@@ -123,19 +123,45 @@ leave the robot driving.
 
 ### What makes it look the way it does
 
-All of it is the OpenGL renderer (`GLRenderer`), nothing needs ray tracing:
+While the simulator runs, all of it is the OpenGL renderer (`GLRenderer`): nothing needs
+ray tracing. The ray tracing was done beforehand, once.
 
-* photo-scanned surfaces and an HDRI of a real warehouse for light and reflections
-  (Poly Haven, CC0), models from Blender scripts
-* an `EffectComposer` chain: ambient occlusion (`GTAOPass`) and bloom (`UnrealBloomPass`)
-* a `Reflector` blended over the floor with a Fresnel term, for the polished-concrete look
-* spot lights under the lamps, one shadow-casting directional light
-* a 2D layer on top (`hud.cpp`, laid out in `overlay.cpp`): cards are rounded `Shape`s, letters are triangles made
-  from the system font's outlines, so the text is sharp at any size. The dashboard gets
-  the same from threepp's ready-made `threepp.lesson.Hud`
+* **The light is baked.**
+  [`tools/blender/make_warehouse.py`](../tools/blender/make_warehouse.py) builds the
+  building in Blender at the measures of `world.cpp`, stands every prop where its box
+  is, and lets Blender's path tracer (Cycles) work out how much light falls on every
+  spot: straight from the lamps and windows, and after bouncing between floor, walls and
+  ceiling. The result is a *lightmap* for each mesh, a picture of light. The simulator
+  multiplies a surface's colour with it (`buildBakedBuilding()` in
+  [`scene.cpp`](../src/explorer_sim/src/scene.cpp)). That is the cheapest material there
+  is, cheaper than one real-time lamp, and it carries exactly what a real-time lamp
+  cannot give: bounce light, and the soft shadow under a rack.
+* **The props are baked with their colour.** A wall has a colour texture that repeats,
+  so its lightmap only holds light. A carton has a label, tape, dust and a shadow side,
+  different in every spot. So for the props Blender bakes colour times light into one
+  picture per room, after giving every material blotches, speckle and worn edges.
+* **What it costs: the light does not move.** A lightmap is right for as long as
+  nothing moves. The building and its racks do not. The robot, the cones and a crate
+  you drop do, so they are lit the ordinary way, by a few lamps and an HDRI (a 360
+  degree photo of a real warehouse), and they cast no shadow into the baked light.
+  A box you add to `world.cpp` is drawn that way too, until the bake has been run again.
+* **Two ways to see the building.** The overview shows it cut open at door height, like
+  an architect's section. The robot's camera and the chase view are inside and see the
+  ceiling. `lookFrom()` shows or hides the upper part before each picture is drawn.
+* **What the sensors hit is not what you see.** The lidar's rays and the collisions
+  still use the plain boxes of `world.cpp`. The baked building is only looked at.
+* an `EffectComposer` chain on top: ambient occlusion (`GTAOPass`) and bloom
+  (`UnrealBloomPass`)
+* a `Reflector` blended over the floor with a Fresnel term, for the polished-concrete
+  look: the windows mirror in it
+* a 2D layer on top (`hud.cpp`, laid out in `overlay.cpp`): cards are rounded `Shape`s,
+  letters are triangles made from the system font's outlines, so the text is sharp at
+  any size. The dashboard gets the same from threepp's ready-made `threepp.lesson.Hud`
 
-Press `P` to switch the post-processing off and see how much of the look it carries.
-The robot's own camera is rendered without it.
+A full bake takes five and a half minutes on a desktop graphics card and needs Blender
+5. Nobody who only runs the demo needs it: the baked files are in the repository. If
+they are missing, the simulator builds a plain model instead (low walls, real-time
+lamps), which is also the shortest way to read how a scene is put together by hand.
 
 ## `safety_monitor`: the reflex, in C++
 
@@ -211,10 +237,13 @@ cone from a table leg. Together:
 It publishes the standard `vision_msgs/Detection2DArray`, as the book does for its ONNX
 detector, so the two detectors are interchangeable.
 
-This node is the reason nothing else in the warehouse is orange. The textures and
-models were chosen and recoloured against the detector's colour range (see
-[`assets/README.md`](../src/explorer_sim/assets/README.md)). In the real world you do
-not get to repaint the warehouse, which is why real detectors are learned, not thresholded.
+This node is the reason nothing else in the warehouse is orange: the racks are blue,
+where real ones often are not. Cardboard and wood stayed what they are. They are
+yellow-brown, close to orange, and in a shadow as strongly coloured as a cone, so the
+detector's hue limit was set from measurements of both (see
+[`assets/models/README.md`](../src/explorer_sim/assets/models/README.md#colours-and-the-cone-detector)).
+In the real world you do not get to repaint the warehouse at all, which is why real
+detectors are learned, not thresholded.
 
 ## `dashboard`: the belief, in Python with threepp
 

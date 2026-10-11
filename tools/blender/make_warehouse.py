@@ -77,7 +77,10 @@ BEAMS_X = [1.5, 9.0, 13.0, 20.5]      # (the inner walls at x = 5 and 17 carry t
 WINDOWS = [(-0.5, 3.5), (6.5, 10.0), (12.0, 15.5), (18.5, 22.5)]
 WINDOW_Z = (2.9, 3.7)
 
-# What stands in the building and casts shadows: world.cpp's boxes that have a model.
+# What stands in the building: world.cpp's boxes that have a model. THIS LIST REPEATS
+# world.cpp. A box added there collides, is seen by the lidar and is drawn at once, but
+# with plain light. It gets baked light when it has been added here too and this script
+# has been run.
 # (x, y, size x, size y, height, model, quarter turns, stretched to its height?)
 PROPS = [(x, y, 3.4, 0.8, 2.0, ("rack_b" if i % 3 == 1 else "rack_a"), (i % 2) * 2, False)
          for i, (y, x) in enumerate((y, x) for y in (5.0, 2.4, -2.4, -5.0) for x in (8.7, 13.3))]
@@ -875,12 +878,18 @@ def strip_for_export(props):
 def write_materials(path):
     """The building's file carries no pictures and no tints (glTF cannot say "2.5 times this
     photo"). This list does. One material per line: how it is drawn (lit = colour times
-    lightmap, flat = one colour), its name, its colour texture or "-", and its tint."""
+    lightmap, flat = one colour), its name, its colour texture or "-", and its tint.
+
+    After the materials: where each prop that was baked stands ("baked x y"). A box of
+    world.cpp that is not in this list is new since the last bake, and the simulator
+    draws it the plain way until this script has been run again."""
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(f"lightmap_scale {LIGHTMAP_SCALE}\n")
         for name, (texture, tint, _tile) in MATERIALS.items():
             kind, colour = ("flat", FLAT[name]) if name in FLAT else ("lit", tint)
             f.write(f"{kind} {name} {texture or '-'} {colour[0]} {colour[1]} {colour[2]}\n")
+        for prop in PROPS:
+            f.write(f"baked {prop[0]} {prop[1]}\n")
 
 
 def export(objects, path):

@@ -56,8 +56,8 @@ namespace explorer_sim {
     // layer 0.
     inline constexpr unsigned int debugLayer = 1;
 
-    // The window shows the building on a plain dark backdrop, like a model on a
-    // table. The robot's own camera sees the warehouse photo instead (see backdrop()).
+    // What the window shows around the building: a plain dark backdrop, like a model
+    // on a table.
     inline constexpr unsigned int windowBackground = 0x10141a;
 
     // ---- ROS frame <-> threepp frame ------------------------------------------------
@@ -100,7 +100,7 @@ namespace explorer_sim {
         // ---- the scene (scene.cpp). Created in run(), on the thread that owns OpenGL ----
         std::shared_ptr<Scene> scene;
         bool bakedBuilding = false;             // the building made in Blender was found, see buildBakedBuilding()
-        bool bakedProps = false;                // and with it everything that stands in it and never moves
+        std::vector<std::pair<double, double>> bakedProps;// where the props stand that came with it, baked
         // The upper part of that building: the walls above door height, and the ceiling
         // with its beams and lamps. Shown to a camera that is inside, see lookFrom().
         std::vector<Object3D*> upperBuilding;

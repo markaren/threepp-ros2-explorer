@@ -302,8 +302,8 @@ namespace explorer_sim {
                                 sim.commandFresh, sim.world.dropped.size()});
             }
 
-            // At eye level, behind the robot, the plain backdrop would be a black void
-            // above the walls: there the warehouse photo is shown instead.
+            // The chase view is inside the building and sees its ceiling. The other
+            // two look in from above, at a building cut open (see lookFrom).
             sim.robotMarker->visible = view != View::Chase;
             sim.lookFrom(view == View::Chase);
             if (effects) {

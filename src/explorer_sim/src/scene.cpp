@@ -1,10 +1,16 @@
 // What is drawn: the warehouse as a threepp scene.
 //
 // Nothing in this file decides how the robot moves or what its sensors measure. It
-// turns the World (a list of boxes, see world.hpp) into something to look at: textured
-// walls, 3D models, lamps, a polished floor, and the overlays that show a human what the
-// lidar is doing. The one thing here that the sensors do depend on is the list of
-// lidar targets, which is filled while the building is put together.
+// turns the World (a list of boxes, see world.hpp) into something to look at: the
+// building with its light baked in (see buildBakedBuilding), what moves in it, a polished
+// floor, and the overlays that show a human what the lidar is doing. The one thing here
+// that the sensors do depend on is the list of lidar targets, which is filled while the
+// building is put together.
+//
+// There are two buildings in this file. The one that is used is made in Blender and
+// only loaded here. The other, the "plain model", is put together from the boxes
+// themselves: low walls, real-time lamps. It is what you get when the Blender files
+// are missing, and it is the shortest way to see how a scene is built by hand.
 //
 // Reading order: buildScene() is the table of contents. Everything above it is a helper
 // it calls.
@@ -218,8 +224,9 @@ namespace explorer_sim {
         const std::filesystem::path assets = config.assetDir;
 
         // Image-based lighting: a 360 degree photo of a real warehouse (an HDRI)
-        // lights the scene and shows up in reflections. The robot's camera also sees
-        // it as the world beyond the walls (see backdrop()).
+        // lights whatever is not baked (the robot, the cones, a dropped crate) and shows
+        // up in their reflections. In the plain model the robot's camera also sees it
+        // as the world beyond the low walls (see lookFrom()).
         const auto hdriFile = assets / "empty_warehouse_01_1k.hdr";
         if (!assets.empty() && std::filesystem::exists(hdriFile)) {
             if (auto hdri = RGBELoader().load(hdriFile)) {
@@ -230,11 +237,14 @@ namespace explorer_sim {
             }
         }
 
-        // Light, in three layers, the way a film set is lit:
+        // Real-time light, for what is not baked. In three layers, the way a film set
+        // is lit:
         //   fill   a dim sky/ground light and the HDRI, so no shadow is pitch black
-        //   key    daylight from the roof windows: one directional light, the only
-        //          one that casts shadows
+        //   key    (plain model only) daylight from the roof windows: one directional
+        //          light, the only one that casts shadows
         //   pools  the lamps hanging over the aisles (see buildLamps)
+        // The baked building takes no notice of any of them: its materials are not lit,
+        // they show a picture of light.
         scene->add(HemisphereLight::create(0xdfe9ff, 0x3a3f47, warehousePhoto ? 0.55f : 1.0f));
 
         // The building itself: floor, walls, ceiling. If the one made in Blender is
@@ -289,8 +299,8 @@ namespace explorer_sim {
                                               0xe6eaef, Color(1.3f, 1.32f, 1.36f), 0.9f, 0.f);
         const auto shelfMaterial = makeSurface(assets, "blue_metal_plate", "blue_metal_plate_Diffuse.jpg",
                                                0x4c6a88, Color(1.7f, 1.9f, 2.2f), 0.7f, 0.55f);
-        // The walls are cut off at 1.4 m so the camera can look in from above, like
-        // an architect's model. A dark cap makes the cut read as a cut.
+        // In the plain model the walls are cut off at 1.4 m so the camera can look in
+        // from above, like an architect's model. A dark cap makes the cut read as a cut.
         const auto capMaterial = makeMaterial(0x15181d, 0.6f);
         const auto deskMaterial = makeMaterial(0xf5f7fa, 0.35f);
         // The planks are a greyscale version of Poly Haven's "weathered_planks": the
@@ -316,7 +326,14 @@ namespace explorer_sim {
             scene->add(proxy);
             lidarTargets.push_back(proxy.get());
 
-            if (bakedBuilding && (box.kind == Box::Kind::Wall || bakedProps)) {
+            // Is this box part of what Blender baked? The walls are. A prop is if the
+            // bake lists a prop at this spot. A box added to world.cpp since the last
+            // bake is not, and is drawn the plain way below, until the bake is redone.
+            const bool baked = bakedBuilding && (box.kind == Box::Kind::Wall ||
+                                                 std::ranges::any_of(bakedProps, [&](const auto& at) {
+                                                     return std::abs(at.first - box.cx) < 0.01 && std::abs(at.second - box.cy) < 0.01;
+                                                 }));
+            if (baked) {
                 // What is LOOKED at here is in the building's own files, with its
                 // light baked in. This box stays as what the lidar's rays hit.
                 proxy->visible = false;
@@ -491,13 +508,15 @@ namespace explorer_sim {
         // materials.txt: what each material of the building is. The building's file
         // has only their names. One per line: "lit" (colour times lightmap) or "flat"
         // (one colour: the lamps, which shine by themselves), the name, a colour
-        // texture from the assets folder or "-", and a tint.
+        // texture from the assets folder or "-", and a tint. After those, one line
+        // "baked x y" for every prop in props.glb.
         struct Surface {
             bool lit = true;
             std::string texture;
             Color tint{0.6f, 0.6f, 0.6f};
         };
         std::unordered_map<std::string, Surface> surfaces;
+        std::vector<std::pair<double, double>> bakedPropsListed;
         // The lightmaps are stored darker by this factor, so that the light right
         // under a lamp (several times brighter than "white") fits into 8 bits.
         float lightmapScale = 1.f;
@@ -505,9 +524,13 @@ namespace explorer_sim {
             std::ifstream list(dir / "materials.txt");
             std::string kind, name, texture;
             float r = 0, g = 0, b = 0;
+            double x = 0, y = 0;
             while (list >> kind) {
                 if (kind == "lightmap_scale") {
                     list >> lightmapScale;
+                } else if (kind == "baked") {
+                    // a prop that is part of props.glb stands at (x, y)
+                    if (list >> x >> y) bakedPropsListed.emplace_back(x, y);
                 } else if (list >> name >> texture >> r >> g >> b) {
                     surfaces[name] = {kind == "lit", texture == "-" ? "" : texture, Color(r, g, b)};
                 }
@@ -588,7 +611,7 @@ namespace explorer_sim {
                     mesh.setMaterial(material);
                 });
                 scene->add(props->scene);
-                bakedProps = true;
+                bakedProps = std::move(bakedPropsListed);
             }
         }
         return true;
@@ -770,6 +793,7 @@ namespace explorer_sim {
     void Simulator::Impl::releaseScene() {
         lidarTargets.clear();
         upperBuilding.clear();
+        bakedProps.clear();
         droppedMeshes.clear();
         droppedVisuals.clear();
         falling.clear();

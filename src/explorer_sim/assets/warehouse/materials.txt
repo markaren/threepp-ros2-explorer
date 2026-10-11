@@ -9,3 +9,33 @@ lit line_paint - 0.82 0.85 0.88
 flat cut_cap - 0.008 0.009 0.012
 flat lamp_glow - 2.6 2.5 2.35
 flat window_glow - 1.5 1.75 2.1
+baked 8.7 5.0
+baked 13.3 5.0
+baked 8.7 2.4
+baked 13.3 2.4
+baked 8.7 -2.4
+baked 13.3 -2.4
+baked 8.7 -5.0
+baked 13.3 -5.0
+baked -0.8 5.6
+baked 0.5 6.7
+baked 1.9 -6.7
+baked 3.2 -5.8
+baked -1.0 -3.0
+baked -1.55 -7.55
+baked -0.95 -7.6
+baked -1.55 -6.95
+baked 4.25 3.3
+baked -1.78 -4.9
+baked 9.0 0.9
+baked 13.6 -0.8
+baked 22.3 7.35
+baked 19.3 7.35
+baked 23.37 2.6
+baked 18.4 -0.63
+baked 22.6 -7.37
+baked 22.3 6.45
+baked 22.45 2.4
+baked 22.6 -6.45
+baked 21.0 -4.2
+baked 17.65 6.9

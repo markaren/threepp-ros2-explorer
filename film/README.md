@@ -3,6 +3,10 @@
 `explorer_film.py` makes a two and a half minute film about this demo: what it is, how its six
 nodes are connected, where threepp sits in a ROS 2 project, how to run it, and how it was made.
 
+The film was made before the warehouse was rebuilt in Blender. Its footage shows the
+earlier look: walls 1.4 m high, real-time lamps, teal crates. To film the building as it
+is now, the run would have to be recorded again.
+
 The film is itself a threepp program. Text, cards, the node graph and the video panes are a
 `threepp.lesson.Hud` (the same 2D toolkit the dashboard's cards are built on), rendered by
 threepp's OpenGL renderer, frame by frame, and piped to ffmpeg. The narration is Kokoro, an

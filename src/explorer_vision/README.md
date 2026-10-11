@@ -30,9 +30,11 @@ functions that a unit test can call.
 ## Step 1: detect (camera)
 
 1. **Colour.** Convert the image to HSV and keep the pixels with an orange hue and a high
-   saturation. Hue is the channel to trust: sun and shadow change the brightness of the
+   saturation. Hue is the channel to trust: light and shadow change the brightness of the
    cone a lot, its hue only a little. Note that OpenCV stores hue as degrees / 2
    (0..179). The cone colour RGB (255, 106, 0) has hue 25 degrees, so 12 in OpenCV.
+   The band is 3 to 14, and its upper end is what keeps cardboard and wood out: they are
+   yellow-brown, hue 17 to 21, and in a shadow as saturated as a cone.
 2. **The white band.** A traffic cone has a white reflective band, which cuts the orange
    mask into two blobs: a wide base and a small tip. Neither is cone-shaped, and a box
    around the base alone is too short for the distance check of step 2. So the band is
@@ -226,8 +228,9 @@ Here the detector is a colour threshold, so the demo has no model file to ship a
 step can be inspected. To use a trained model instead, replace one module,
 `cone_detector.py`: keep the function `detect_cones(image) -> list of Detection` and
 put the network behind it. The colour threshold is also honest about its limits: it
-only works because nothing else in the warehouse is orange. A network is what you reach
-for when that is no longer true.
+only works because nothing else in the warehouse is orange, and because the one thing
+that comes close (cardboard) differs enough in hue to be told apart. A network is what
+you reach for when that is no longer true.
 
 ## Limits
 

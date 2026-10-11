@@ -65,6 +65,8 @@ pixi run -e jazzy python tools/blender/fetch_polyhaven.py <work folder>
 
 * `make_models.py` builds the robot, racks, pallets, crate and signs from bevelled boxes, lathed
   profiles and lofted outlines, with plain materials (colour, roughness, emission), no textures.
+  The wear on them is added later: `make_warehouse.py` dresses every material before it bakes
+  the building (see [the assets README](../README.md#the-building-warehouse)).
 * `fetch_polyhaven.py` downloads the six [Poly Haven](https://polyhaven.com) props (CC0) and
   prepares their textures; `clean_polyhaven.py` puts each prop on the floor at its footprint
   centre, turns its front to +X and exports it.
