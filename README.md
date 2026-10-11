@@ -267,9 +267,10 @@ It is a teaching demo, and it cuts the corners that would hide the ideas:
   and a map, and it keeps the simulator's only dependency threepp.
 * **Nobody plans for the camera.** The explorer goes where the lidar has not seen yet.
   The lidar sees all around and 8 m far, the camera 80 degrees ahead and 5 m, so a cone
-  the robot happens never to face is never found. In six recorded runs it found
-  6, 6, 6, 5, 6 and 4 of the six, and each cone it did find was placed within a few
-  centimetres. Fixing that is one of the [exercises](docs/exercises.md).
+  the robot happens never to face is never found. In eight recorded runs it found
+  between four and six of the six (6, 6, 6, 5, 6, 4, 4, 5), and every cone it did find
+  was placed within a few centimetres. Fixing that is one of the
+  [exercises](docs/exercises.md).
 * **The cone detector is a colour threshold**, not a neural network. The interface is
   the one the book uses (`vision_msgs/Detection2DArray`), so swapping in the ONNX
   detector from Part 6 changes one Python module.

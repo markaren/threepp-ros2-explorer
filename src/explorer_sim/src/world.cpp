@@ -156,7 +156,7 @@ namespace explorer_sim {
         w.cones = {
                 {2.4, 5.4},  // loading dock
                 {9.0, 6.6},  // aisle A
-                {12.5, -3.2},// aisle D
+                {15.5, -3.7},// where aisle D opens into the cross passage
                 {16.1, 0.9}, // end of the main corridor
                 {20.5, 5.0}, // north office
                 {22.5, -3.0},// south office

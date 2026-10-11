@@ -184,6 +184,8 @@ Same package.
 A camera gives a direction but no distance. A 2D lidar gives distances but cannot tell a
 cone from a table leg. Together:
 
+![What the cone spotter publishes on camera/annotated/compressed](images/detector.jpg)
+
 1. **Detect** orange, cone-shaped blobs in the image (OpenCV: HSV threshold, contours,
    a shape test). A cone's white reflective band cuts its orange in two, so white
    pixels that have orange both above and below them, in the same column, are added

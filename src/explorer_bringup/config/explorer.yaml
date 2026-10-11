@@ -58,7 +58,9 @@ explorer:
 
 cone_spotter:
   ros__parameters:
-    max_range: 5.0         # m. Cones farther away are detected but not placed on the map
+    max_range: 6.0         # m. Cones farther away are detected but not placed on the map.
+                           # (The node's own default is 5.0. Measured in the simulator, the
+                           # detector still draws one clean box per image at 5.9 m.)
     confirmations: 3       # sightings needed before a cone counts
     merge_radius: 0.6      # m. Sightings closer than this are the same cone
 
