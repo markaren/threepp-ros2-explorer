@@ -33,9 +33,20 @@ functions that a unit test can call.
    saturation. Hue is the channel to trust: sun and shadow change the brightness of the
    cone a lot, its hue only a little. Note that OpenCV stores hue as degrees / 2
    (0..179). The cone colour RGB (255, 106, 0) has hue 25 degrees, so 12 in OpenCV.
-2. **Clean-up.** A morphological opening removes specks, a closing fills small holes.
-3. **Blobs.** `cv2.findContours` gives one outline per connected region.
-4. **Shape.** A blob is a cone only if
+2. **The white band.** A traffic cone has a white reflective band, which cuts the orange
+   mask into two blobs: a wide base and a small tip. Neither is cone-shaped, and a box
+   around the base alone is too short for the distance check of step 2. So the band is
+   added back to the mask. "White" (low saturation, not dark) is not enough for that,
+   because the plaster walls are just as white. A white pixel counts only if there is
+   orange **above it and below it in the same pixel column**, within `band_reach`
+   pixels. That holds for the band (tip above, base below) and for nothing else: the
+   wall beside the band has orange below but none above, because a cone only gets
+   narrower upwards. The two searches are dilations of the orange mask with a kernel
+   that is one pixel wide and `band_reach` tall, anchored at its lower or upper end.
+3. **Clean-up.** A morphological opening removes specks from the orange mask, a closing
+   fills small holes and the seams between orange and white.
+4. **Blobs.** `cv2.findContours` gives one outline per connected region.
+5. **Shape.** A blob is a cone only if
    * its area is at least `min_blob_area` pixels,
    * its box is taller than wide: `height >= 1.2 * width`,
    * it is narrower at the top than at the bottom: the mean width of the top third
@@ -160,14 +171,21 @@ ros2 param set /cone_spotter hue_max 8
 ros2 param set /cone_spotter min_blob_area 2000.0
 ```
 
+A parameter keeps the type it was declared with. The defaults in the table show which
+it is: `110` is an integer, `80.0` is a double. A double needs the decimal point
+(`2000.0`, not `2000`) and an integer must not have one, or `ros2 param set` refuses
+the value.
+
 | Parameter | Default | Try this |
 |---|---|---|
-| `hue_min`, `hue_max` | 3, 24 | Narrow the band until the shaded side of the cone drops out of the box. |
+| `hue_min`, `hue_max` | 3, 24 | Narrow the range until the shaded side of the cone drops out of the box. |
 | `saturation_min` | 110 | Raise it: the cone's anti-aliased edge goes first. |
 | `value_min` | 40 | Raise it to 150: only the sunlit side is left. Is that still cone-shaped? |
-| `min_blob_area` | 80 | Raise it: distant cones are no longer detected. |
+| `min_blob_area` | 80.0 | Raise it: distant cones are no longer detected. |
+| `band_reach` | 60 | Set it to 0: the white band no longer joins tip and base. The box shrinks to the tip, and the label turns to `cone (no range)`. |
+| `white_saturation_max`, `white_value_min` | 80, 80 | What counts as white (the band). Raise `white_value_min` to 230 and no band is bright enough any more. |
 | `max_range` | 5.0 | Lower it and the robot must drive closer before a cone appears on the map. |
-| `distance_tolerance` | 0.30 | Set it to 10 and the gate is off. Watch for cones that land on walls. |
+| `distance_tolerance` | 0.30 | Set it to 10.0 and the gate is off. Watch for cones that land on walls. |
 | `merge_radius` | 0.6 | Set at start, for example `--ros-args -p merge_radius:=0.05`: one cone becomes many. |
 | `confirmations` | 3 | Set at start. With 1, every false sighting becomes a cone at once. |
 | `cone_height`, `cone_base_radius` | 0.70, 0.20 | Set at start. The real size of the cones. A wrong height makes the gate reject everything. |
@@ -183,14 +201,15 @@ pixi run -e jazzy python -m pytest src/explorer_vision/test -q
 
 * `test_cone_detector.py`: painted scenes. Cones in clutter, in shadow, far away, cut by
   the image border, and orange things that are not cones (a crate, a pole, a ball, a
-  funnel).
+  funnel). Cones with a white band from 2 to 5 m in front of a light plaster wall, a
+  white pillar behind a cone, and the rule "orange above and below" on a single column.
 * `test_cone_locator.py`: a simulated scan of a cone in front of a wall. The position
   must be right to within 0.1 m, and when the cone's returns are removed, the gate must
   refuse to put the cone on the wall.
 * `test_cone_map.py`: merging, confirmation, stable ids.
 * `test_rendered_image.py`: the detector on `test/data/rendered_cones.png`, an image
-  rendered with threepp (a lit 3D cone, not a painted triangle).
-  `test/render_test_image.py` recreates that image.
+  rendered with threepp: four lit 3D cones with the simulator's texture and rubber foot
+  at 2, 3, 4 and 5 m, not painted triangles. `test/render_test_image.py` recreates it.
 
 `test/synthetic_world.py` is a miniature simulator for the tests: a pinhole camera that
 paints cones, and a ray caster that plays lidar.

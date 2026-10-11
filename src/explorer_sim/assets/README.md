@@ -1,6 +1,6 @@
 # Assets
 
-Everything in this folder comes from [Poly Haven](https://polyhaven.com) and is licensed
+Almost everything in this folder comes from [Poly Haven](https://polyhaven.com) and is licensed
 [CC0](https://polyhaven.com/license): free to use, change and redistribute, no attribution
 required. Credit is given anyway.
 
@@ -12,7 +12,12 @@ required. Credit is given anyway.
 | `weathered_planks_*.jpg` | [weathered_planks](https://polyhaven.com/a/weathered_planks) | the crates |
 | `empty_warehouse_01_1k.hdr` | [empty_warehouse_01](https://polyhaven.com/a/empty_warehouse_01) | lighting and backdrop |
 
-All are the 1k versions. Each texture set has three maps:
+One file is not from Poly Haven: `cone.png`, the texture of the traffic cones (orange
+plastic, a white reflective band, scuffs). It is painted by
+[`tools/make_cone_texture.py`](../../../tools/make_cone_texture.py), which also explains
+why it looks the way it does.
+
+The Poly Haven textures are the 1k versions. Each texture set has three maps:
 
 * `_Diffuse`: the colour of the surface
 * `_nor_gl`: the normal map, fine relief that catches the light (OpenGL convention)

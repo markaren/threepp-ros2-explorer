@@ -109,12 +109,21 @@ class ConeSpotter(Node):
                       'Minimum brightness (0..255). Lower it to accept cones in shadow.')
         self._declare('min_blob_area', defaults.min_area,
                       'Orange blobs with fewer pixels than this are ignored.')
-        self._declare('cone_height', 0.70, 'Real height of a cone, metres.')
-        self._declare('cone_base_radius', 0.20, 'Real radius of a cone at the floor, metres.')
+        self._declare('white_saturation_max', defaults.white_saturation_max,
+                      'Maximum saturation (0..255) of the white band on a cone.')
+        self._declare('white_value_min', defaults.white_value_min,
+                      'Minimum brightness (0..255) of the white band on a cone.')
+        self._declare('band_reach', defaults.band_reach,
+                      'A white pixel joins a cone if orange lies within this many '
+                      'pixels above it and below it.')
+        self._declare('cone_height', 0.70, 'Real height of a cone, metres.', fixed=True)
+        self._declare('cone_base_radius', 0.20, 'Real radius of a cone at the floor, metres.',
+                      fixed=True)
         self._declare('merge_radius', 0.6,
-                      'Sightings closer than this to a known cone are the same cone, metres.')
+                      'Sightings closer than this to a known cone are the same cone, metres.',
+                      fixed=True)
         self._declare('confirmations', 3,
-                      'Sightings needed before a cone is published on "cones".')
+                      'Sightings needed before a cone is published on "cones".', fixed=True)
         self._declare('max_range', 5.0,
                       'Cones that look farther away than this are not localised, metres.')
         self._declare('distance_tolerance', 0.30,
@@ -191,8 +200,16 @@ class ConeSpotter(Node):
 
         self.get_logger().info('cone_spotter is waiting for camera images')
 
-    def _declare(self, name: str, default, description: str) -> None:
-        self.declare_parameter(name, default, ParameterDescriptor(description=description))
+    def _declare(self, name: str, default, description: str, fixed: bool = False) -> None:
+        """Declare a parameter with a description.
+
+        Most of this node's parameters are read again for every image, so changing one
+        with "ros2 param set" takes effect at once. A few are read only once, at start.
+        Those are declared read-only (fixed=True): a later change is then refused with
+        a reason, instead of being accepted and ignored.
+        """
+        descriptor = ParameterDescriptor(description=description, read_only=fixed)
+        self.declare_parameter(name, default, descriptor)
 
     def _thresholds(self) -> DetectorThresholds:
         """Read the detector's settings from the parameters.
@@ -205,7 +222,10 @@ class ConeSpotter(Node):
             hue_max=self.get_parameter('hue_max').value,
             saturation_min=self.get_parameter('saturation_min').value,
             value_min=self.get_parameter('value_min').value,
-            min_area=self.get_parameter('min_blob_area').value)
+            min_area=self.get_parameter('min_blob_area').value,
+            white_saturation_max=self.get_parameter('white_saturation_max').value,
+            white_value_min=self.get_parameter('white_value_min').value,
+            band_reach=self.get_parameter('band_reach').value)
 
     def _on_camera_info(self, msg: CameraInfo) -> None:
         self._intrinsics = CameraIntrinsics.from_k(msg.k)

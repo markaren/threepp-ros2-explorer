@@ -35,6 +35,7 @@ class DashboardApp:
         # What the HUD shows until the first messages arrive.
         self._status = Status(RobotState.UNKNOWN, 0, 0.0, 0.0, 0.0)
         self._safety_stop = False
+        self._cone_count = 0
         self._have_map = False
         self._have_pose = False
         self._notices: Deque[Tuple[float, str]] = deque(maxlen=3)   # (expiry, text)
@@ -64,13 +65,15 @@ class DashboardApp:
             if not self._have_map:
                 # The first map tells us how big the world is: frame all of it.
                 # The factor leaves room for the near edge, which perspective widens.
-                # The left 30 % of the window is the HUD's column, so the map is
-                # framed in what is left: seen from a little further away, and looked
-                # at off-centre so that it slides to the right.
-                view_width = 1.5 * grid.width_m
-                self._window.look_at_area(grid.origin_x + grid.width_m / 2.0 - 0.145 * view_width,
-                                          grid.origin_y + grid.height_m / 2.0,
-                                          view_width)
+                # The HUD's column covers the left part of the window, so the map is
+                # framed in what is left of it: seen from far enough away to fit there,
+                # and looked at off-centre so that it slides to the right.
+                column = self._window.hud.column_fraction()
+                view_width = 1.08 * grid.width_m / (1.0 - column)
+                self._window.look_at_area(
+                    grid.origin_x + grid.width_m / 2.0 - 0.5 * column * view_width,
+                    grid.origin_y + grid.height_m / 2.0,
+                    view_width)
                 self._have_map = True
 
         pose = inbox.pose.take()
@@ -93,6 +96,7 @@ class DashboardApp:
         cones = inbox.cones.take()
         if cones is not None:
             world.set_cones(cones)
+            self._cone_count = len(cones)
 
         image = inbox.camera.take()
         if image is not None:
@@ -150,6 +154,7 @@ class DashboardApp:
             waiting_for.append('explorer status')
         self._window.hud.update(HudData(
             status=self._status,
+            cone_count=self._cone_count,
             safety_stop=self._safety_stop,
             follow=self._window.follow,
             waiting_for=waiting_for,

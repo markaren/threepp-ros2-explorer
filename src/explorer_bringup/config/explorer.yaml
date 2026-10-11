@@ -14,6 +14,8 @@
 
 sim:
   ros__parameters:
+    width: 1280            # the simulator window, in pixels. Smaller is faster
+    height: 720
     sensor_rate: 10.0      # lidar scans and camera frames per second
     odom_rate: 30.0        # odometry and tf samples per second
     lidar_beams: 360

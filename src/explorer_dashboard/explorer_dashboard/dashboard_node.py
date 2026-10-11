@@ -186,9 +186,13 @@ class DashboardNode(Node):
     def _parameter(self, name: str, default, description: str):
         """Declare a parameter with a description and return its value.
 
-        The description shows up in "ros2 param describe /dashboard <name>".
+        The description shows up in "ros2 param describe /dashboard <name>". The node
+        reads its parameters once, here, at start, so they are declared read-only: a
+        later "ros2 param set" is refused with a reason, instead of being accepted and
+        then ignored. (A launch file or YAML file can still set them: that happens at
+        declaration.)
         """
-        descriptor = ParameterDescriptor(description=description)
+        descriptor = ParameterDescriptor(description=description, read_only=True)
         return self.declare_parameter(name, default, descriptor).value
 
     # ---- Between the threads --------------------------------------------------------

@@ -23,7 +23,7 @@ platforms = ["win-64"]
 scripts = ["install/setup.bat"]
 
 # added for this demo: which DDS implementation ROS 2 talks through.
-# See "Why CycloneDDS" in README.md.
+# See "Why CycloneDDS" in docs/architecture.md.
 [activation.env]
 RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
 

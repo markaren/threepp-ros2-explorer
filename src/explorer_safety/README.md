@@ -1,9 +1,9 @@
 # explorer_safety: the reflex
 
-One node, `safety_monitor`, in one C++ file of 160 lines:
+One node, `safety_monitor`, in one C++ file of 190 lines:
 [`src/safety_monitor.cpp`](src/safety_monitor.cpp). If you read only one file in this
 repository, read that one. It has everything a node has (two subscriptions, two
-publishers, parameters, state shared between callbacks) and nothing else.
+publishers, a timer, parameters, state shared between callbacks) and nothing else.
 
 ```
 explorer --cmd_vel_nav--> safety_monitor --cmd_vel--> sim
@@ -17,8 +17,8 @@ speed: full speed with 0.5 m of clearance or more, zero at 0.1 m. Turning is nev
 limited, so the planner can always steer away. With no scan for half a second it lets
 nothing through.
 
-It publishes `safety_stop` (`std_msgs/Bool`, latched) while it is holding the robot
-still.
+It publishes `safety_stop` (`std_msgs/Bool`, latched): `true` while forward motion is
+blocked, which includes the moments before the first scan has arrived.
 
 Try it without the planner:
 

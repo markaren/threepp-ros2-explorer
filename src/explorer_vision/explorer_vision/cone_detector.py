@@ -49,6 +49,16 @@ class DetectorThresholds:
     # Mean width of the top third divided by mean width of the bottom third.
     # A perfect triangle gives 0.2, a rectangle or a ball gives 1.0.
     max_taper: float = 0.6
+    # The white reflective band. "White" here means: little colour and not
+    # dark. That is a loose description on purpose (the shaded side of the
+    # band is grey), and it also fits a plaster wall or the floor. What makes
+    # a white pixel part of a cone is the test in white_band_mask.
+    white_saturation_max: int = 80
+    white_value_min: int = 80
+    # How many pixels above and below a white pixel are searched for orange.
+    # It must be at least the height of the band in the image, which is about
+    # 45 pixels for a cone 1 m away (as close as a cone fits in the picture).
+    band_reach: int = 60
 
 
 @dataclass(frozen=True)
@@ -89,9 +99,8 @@ class Detection:
         return self.y + self.height / 2.0
 
 
-def orange_mask(image_bgr: np.ndarray, thresholds: DetectorThresholds) -> np.ndarray:
+def orange_mask(hsv: np.ndarray, thresholds: DetectorThresholds) -> np.ndarray:
     """Return a binary image: 255 where the pixel is saturated orange, else 0."""
-    hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
     lower = np.array(
         [thresholds.hue_min, thresholds.saturation_min, thresholds.value_min],
         dtype=np.uint8)
@@ -99,13 +108,61 @@ def orange_mask(image_bgr: np.ndarray, thresholds: DetectorThresholds) -> np.nda
     mask = cv2.inRange(hsv, lower, upper)
 
     # Opening = erode then dilate: specks smaller than the kernel disappear,
-    # larger blobs keep their size. Closing = dilate then erode: small holes
-    # (a highlight, a JPEG artefact) are filled.
+    # larger blobs keep their size.
     small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    return cv2.morphologyEx(mask, cv2.MORPH_OPEN, small)
+
+
+def white_band_mask(
+        hsv: np.ndarray, orange: np.ndarray, thresholds: DetectorThresholds) -> np.ndarray:
+    """Return the white pixels that lie between orange above and orange below.
+
+    A real traffic cone has a white reflective band, so the orange mask of
+    one cone is two blobs: the wide base and the small tip. The band has to
+    be added back, or neither blob looks like a cone.
+
+    "White" alone cannot do that: the walls are light too. But only the band
+    has orange on BOTH sides in the same pixel column, the tip above it and
+    the base below it. The wall next to the band has orange below (the cone
+    gets wider downwards) and nothing but wall above. A white pillar behind
+    a cone has orange below and none above.
+
+    The search along the column is a dilation with a kernel that is one pixel
+    wide and `band_reach + 1` pixels tall. Dilation sets a pixel if ANY pixel
+    under the kernel is set. With the anchor at the kernel's bottom end the
+    kernel reaches upwards from each pixel, so the result answers "is there
+    orange within reach above me?". With the anchor at the top end it
+    answers the same question for below.
+    """
+    white = cv2.inRange(
+        hsv,
+        np.array([0, 0, thresholds.white_value_min], dtype=np.uint8),
+        np.array([179, thresholds.white_saturation_max, 255], dtype=np.uint8))
+
+    reach = thresholds.band_reach
+    column = np.ones((reach + 1, 1), dtype=np.uint8)
+    orange_above = cv2.dilate(orange, column, anchor=(0, reach))
+    orange_below = cv2.dilate(orange, column, anchor=(0, 0))
+    return white & orange_above & orange_below
+
+
+def cone_mask(image_bgr: np.ndarray, thresholds: DetectorThresholds) -> np.ndarray:
+    """Return a binary image: 255 where the pixel belongs to a cone candidate.
+
+    That is the orange surface plus the white band that connects its two
+    parts. Only the middle of the band qualifies (the columns that have the
+    tip above them), which is enough to make tip and base one blob whose
+    bounding box is the whole cone.
+    """
+    hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
+    orange = orange_mask(hsv, thresholds)
+    mask = orange | white_band_mask(hsv, orange, thresholds)
+
+    # Closing = dilate then erode: small holes are filled. Here these are the
+    # thin seams between orange and white, where JPEG compression mixes the
+    # two colours into something that is neither.
     large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, small)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, large)
-    return mask
+    return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, large)
 
 
 def taper_ratio(blob: np.ndarray) -> float:
@@ -128,7 +185,7 @@ def detect_cones(
         thresholds: DetectorThresholds = DetectorThresholds()) -> List[Detection]:
     """Find the cones in a BGR image, largest (nearest) first."""
     image_height, image_width = image_bgr.shape[:2]
-    mask = orange_mask(image_bgr, thresholds)
+    mask = cone_mask(image_bgr, thresholds)
 
     # RETR_EXTERNAL: only the outer outline of each blob, holes are ignored.
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

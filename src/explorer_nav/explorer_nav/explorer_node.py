@@ -260,8 +260,14 @@ class Explorer(Node):
         self.get_logger().info('Explorer ready: send an Explore goal, or click a goal pose')
 
     def _parameter(self, name: str, default, description: str):
-        """Declare a parameter with a description and return its value."""
-        descriptor = ParameterDescriptor(description=description)
+        """Declare a parameter with a description and return its value.
+
+        This node reads its parameters once, here, at start. So they are declared
+        read-only: a later "ros2 param set" is refused with a reason, instead of being
+        accepted and then ignored. (A launch file or YAML file can still set them: that
+        happens at declaration.)
+        """
+        descriptor = ParameterDescriptor(description=description, read_only=True)
         return self.declare_parameter(name, default, descriptor).value
 
     def _now(self) -> float:

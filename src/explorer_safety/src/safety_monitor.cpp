@@ -19,8 +19,8 @@
 // nothing through.
 //
 // This is also the smallest complete rclcpp node in the workspace: two subscriptions,
-// two publishers, parameters, and shared state between callbacks. A good file to start
-// reading with.
+// two publishers, a timer, parameters, and state shared between callbacks. A good file
+// to start reading with.
 
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -28,9 +28,12 @@
 #include "std_msgs/msg/bool.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <mutex>
+
+using namespace std::chrono_literals;
 
 class SafetyMonitor: public rclcpp::Node {
 public:
@@ -42,7 +45,9 @@ public:
         scanTimeout_ = declare_parameter("scan_timeout", 0.5);
 
         // Best effort, shallow history: the profile for sensor streams. It must be
-        // compatible with the publisher's QoS or no data flows, without any error.
+        // compatible with the publisher's QoS. If it is not (ask for "reliable" from a
+        // best-effort publisher, say), no data flows, and all you are told is one
+        // warning in the log when the two discover each other.
         scanSub_ = create_subscription<sensor_msgs::msg::LaserScan>(
                 "scan", rclcpp::SensorDataQoS(),
                 [this](const sensor_msgs::msg::LaserScan& scan) { onScan(scan); });
@@ -53,16 +58,24 @@ public:
 
         commandPub_ = create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
 
-        // "Is the reflex holding the robot back right now?" changes rarely, and a
-        // dashboard that starts late still needs the current answer. Transient local
-        // makes the publisher keep the last message for late joiners (a "latched" topic).
+        // "Is forward motion blocked right now?" changes rarely, and a dashboard that
+        // starts late still needs the current answer. Transient local makes the
+        // publisher keep the last message for late joiners (a "latched" topic).
         stopPub_ = create_publisher<std_msgs::msg::Bool>("safety_stop", rclcpp::QoS(1).reliable().transient_local());
-        publishStopState(false);
+        publishBlocked(true);// blocked until the first scan says otherwise
+
+        // A scan that stops coming triggers no callback, so somebody has to look at
+        // the clock: this timer notices when the last scan has grown too old.
+        watchdog_ = create_wall_timer(100ms, [this] { onWatchdog(); });
     }
 
 private:
-    // Runs when a scan arrives: work out how much free floor lies ahead and remember it.
+    // Runs when a scan arrives: work out how much free floor lies ahead.
     void onScan(const sensor_msgs::msg::LaserScan& scan) {
+        if (scan.ranges.empty()) {
+            return;// a scan without beams says nothing about the world
+        }
+
         // Only returns inside the strip the robot would sweep when driving straight
         // ahead matter: in front of it (forward > 0) and no wider than the robot plus
         // a small margin. A wall running alongside does not count.
@@ -82,56 +95,69 @@ private:
             }
         }
 
-        // The two callbacks of this node share clearance_ and lastScanTime_. With the
-        // default single-threaded executor they can never run at the same time, and
-        // this lock would not be needed. But that is a property of how main() spins
-        // the node, not of this class: switch to a MultiThreadedExecutor and the same
-        // code would be a data race. The lock makes the class correct either way, and
-        // an uncontended lock costs next to nothing. (Chapter 7, exercise 4.)
+        // The callbacks of this node share the three variables below. With the default
+        // single-threaded executor they can never run at the same time, and this lock
+        // would not be needed. But that is a property of how main() spins the node,
+        // not of this class: switch to a MultiThreadedExecutor and the same code would
+        // be a data race. The lock makes the class correct either way, and an
+        // uncontended lock costs next to nothing. (Chapter 7, exercise 4.)
         std::lock_guard<std::mutex> lock(mutex_);
         clearance_ = nearest - robotRadius_;// measured from the robot's front edge
         lastScanTime_ = now();
+        haveScan_ = true;
+
+        // Blocked or not, with hysteresis: the state is entered at stop_clearance and
+        // only left again a few centimetres further out. Without that, lidar noise
+        // makes the clearance hop back and forth over the threshold and the flag flickers.
+        const bool blocked = blocked_ ? clearance_ < stopClearance_ + 0.04 : clearance_ <= stopClearance_;
+        setBlocked(blocked);
+    }
+
+    // Runs ten times a second: has the lidar gone quiet?
+    void onWatchdog() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (scanIsStale()) {
+            if (!blocked_) {
+                RCLCPP_WARN(get_logger(), "no recent scan: holding the robot still");
+            }
+            setBlocked(true);
+        }
     }
 
     // Runs when the planner sends a command: let it through, slowed or stopped as needed.
     void onCommand(const geometry_msgs::msg::Twist& command) {
-        double clearance;
-        rclcpp::Time lastScanTime;
+        geometry_msgs::msg::Twist safe = command;
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            clearance = clearance_;
-            lastScanTime = lastScanTime_;
+            if (scanIsStale()) {
+                // The lidar has failed or its driver has crashed. We are blind, so we
+                // do not move at all, not even on the spot.
+                safe = geometry_msgs::msg::Twist();
+            } else if (command.linear.x > 0) {
+                // 1 when there is plenty of room, falling linearly to 0 at stop_clearance.
+                const double scale = std::clamp((clearance_ - stopClearance_) / (slowClearance_ - stopClearance_), 0.0, 1.0);
+                safe.linear.x = blocked_ ? 0.0 : command.linear.x * scale;
+            }
         }
-
-        geometry_msgs::msg::Twist safe = command;
-        bool holdingBack = false;
-
-        if ((now() - lastScanTime).seconds() > scanTimeout_) {
-            // No recent scan: the lidar has failed or its driver has crashed. We are
-            // blind, so we do not move at all.
-            safe = geometry_msgs::msg::Twist();
-            holdingBack = true;
-            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "no recent scan: holding the robot still");
-        } else if (command.linear.x > 0) {
-            // 1 when there is plenty of room, falling linearly to 0 at stop_clearance.
-            const double scale = std::clamp((clearance - stopClearance_) / (slowClearance_ - stopClearance_), 0.0, 1.0);
-            safe.linear.x = command.linear.x * scale;
-            // The flag has hysteresis: it is raised at stop_clearance and only lowered
-            // again a few centimetres further out. Without that, lidar noise makes the
-            // clearance hop back and forth over the threshold and the flag flickers.
-            holdingBack = holdingBack_ ? clearance < stopClearance_ + 0.04 : scale == 0.0;
-        }
-
         commandPub_->publish(safe);
-        if (holdingBack != holdingBack_) {
-            publishStopState(holdingBack);
+    }
+
+    // The three helpers below expect the caller to hold mutex_.
+
+    [[nodiscard]] bool scanIsStale() {
+        return !haveScan_ || (now() - lastScanTime_).seconds() > scanTimeout_;
+    }
+
+    void setBlocked(bool blocked) {
+        if (blocked != blocked_) {
+            publishBlocked(blocked);
         }
     }
 
-    void publishStopState(bool holdingBack) {
-        holdingBack_ = holdingBack;
+    void publishBlocked(bool blocked) {
+        blocked_ = blocked;
         std_msgs::msg::Bool msg;
-        msg.data = holdingBack;
+        msg.data = blocked;
         stopPub_->publish(msg);
     }
 
@@ -142,18 +168,18 @@ private:
     double slowClearance_;
     double scanTimeout_;
 
-    // Shared between the two callbacks, guarded by mutex_.
+    // Shared between the callbacks, guarded by mutex_.
     std::mutex mutex_;
     double clearance_ = 0.0;// free floor ahead of the robot's front edge, m
     rclcpp::Time lastScanTime_{0, 0, RCL_ROS_TIME};
-
-    // Only used by onCommand.
-    bool holdingBack_ = false;
+    bool haveScan_ = false;
+    bool blocked_ = true;// forward motion is being held at zero
 
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scanSub_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr commandSub_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr commandPub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr stopPub_;
+    rclcpp::TimerBase::SharedPtr watchdog_;
 };
 
 int main(int argc, char** argv) {

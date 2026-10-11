@@ -44,7 +44,7 @@ hides threepp behind the Pimpl idiom, so the ROS half never sees a threepp heade
 could put the simulator behind MQTT or a raw socket (Part 4 of the book) by replacing
 one file.
 
-### Three threads, four shared objects
+### Three threads, and the few places where they meet
 
 ```
  executor thread                       main thread                      publisher thread
@@ -66,6 +66,10 @@ one file.
 * The **publisher thread** takes sensor ticks off a queue and publishes them, so the
   render loop never waits for the middleware.
 
+That drawing is the complete list: three mailboxes, the telemetry queue, the job
+queue with its promises, and one atomic flag that asks the render loop to stop. Nothing
+else is touched by more than one thread, and no code outside those objects needs a lock.
+
 A mailbox where only the newest value matters (a velocity command, a camera frame). A
 queue where every item counts (each sensor tick becomes a tf sample). Both classes are
 the book's, unchanged apart from a `tryPop()`.
@@ -78,13 +82,16 @@ It posts a job and gets a `std::future` back:
 
 ```
 executor thread:  future = simulator.requestSpawn(x, y, size);   // pushes a job + promise
-                  result = future.get();                         // blocks, at most one frame
+                  future.wait_for(2s); result = future.get();    // normally back within one frame
 main thread:      while (auto job = jobs.tryPop()) (*job)();     // runs it, sets the promise
 ```
 
-If the simulator shuts down with jobs still queued, it destroys them. That breaks their
-promises, `future.get()` throws `std::future_error`, and the waiting callback answers
-"the simulator did not answer" instead of hanging forever.
+The wait is bounded on purpose. If the render loop is busy (Windows stalls it while a
+window is being dragged), the callback gives up after two seconds. If the simulator
+shuts down with jobs still queued, it destroys them: that breaks their promises,
+`future.get()` throws `std::future_error`, and the waiting callback answers "the
+simulator did not answer" instead of hanging forever. A job that throws passes its
+exception through the promise in the same way.
 
 ### Physics, and sensors at their own rate
 
@@ -95,14 +102,16 @@ differential-drive robot with speed and acceleration limits, as a disc that cann
 enter boxes.
 
 Sensors fire every 1/30 s (odometry) and every third tick of that (lidar and camera),
-whatever the frame rate. The lidar and the camera fire on the same tick and carry the
+whatever the frame rate, as long as it is at least 30 frames a second. A sensor tick
+happens inside a frame, so on a machine that draws slower than that, the sensors slow
+down with it. The lidar and the camera fire on the same tick and carry the
 **same time stamp**, like a hardware-synchronised sensor rig. `cone_spotter` relies on
 it to pair an image with its scan.
 
 * **Lidar.** One ray per beam into the scene with threepp's `Raycaster`, plus Gaussian
-  noise. The rays are tested against simple boxes, not against the detailed models you
-  see: every object has a hidden box (its collision and lidar shape) and a visible
-  model. All simulators do this.
+  noise. The rays are tested against simple shapes, not against the detailed models
+  you see: every rack, crate or desk has a hidden box (its collision and lidar shape)
+  and a visible model, and a cone is tested against a plain cone. All simulators do this.
 * **Camera.** threepp's `CameraSensor` renders the scene from the robot's viewpoint
   into an off-screen target and reads the pixels back. The node converts them to JPEG
   on the executor thread and publishes them with their intrinsics (`CameraInfo`).
@@ -176,7 +185,9 @@ A camera gives a direction but no distance. A 2D lidar gives distances but canno
 cone from a table leg. Together:
 
 1. **Detect** orange, cone-shaped blobs in the image (OpenCV: HSV threshold, contours,
-   a shape test).
+   a shape test). A cone's white reflective band cuts its orange in two, so white
+   pixels that have orange both above and below them, in the same column, are added
+   back before the shape is tested. White alone would not do: the walls are light too.
 2. **Locate**: take the lidar returns whose bearing, *seen from the camera*, falls
    inside the detection's box. The nearest cluster is the cone. Cross-check the range
    against the cone's apparent height in the image, and discard the match if they

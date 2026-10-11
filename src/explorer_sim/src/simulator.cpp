@@ -171,6 +171,10 @@ namespace explorer_sim {
         if (std::hypot(x - truth.x, y - truth.y) < reach) {
             return {false, "that spot is on top of the robot"};
         }
+        // Not into a rack, a wall, a cone or another crate.
+        if (!world.isFree(x, y, half)) {
+            return {false, "something is already standing there"};
+        }
 
         const Box crate{x, y, size, size, size, Box::Kind::Crate, "crate"};
         world.dropped.push_back(crate);// from now on the robot collides with it ...
@@ -221,7 +225,9 @@ namespace explorer_sim {
         Impl* impl = pimpl_.get();
         auto promise = std::make_shared<std::promise<std::string>>();
         auto future = promise->get_future();
-        impl->jobs.push([impl, promise] { impl->pendingScreenshot = promise; });
+        if (!impl->loopEnded) {
+            impl->jobs.push([impl, promise] { impl->pendingScreenshot = promise; });
+        }
         return future;
     }
 

@@ -14,7 +14,7 @@ ros2 param list /sim                                   # everything that can be 
 
 | File | Lines of interest |
 |---|---|
-| [`src/main.cpp`](src/main.cpp) | Start here. 80 lines: the three threads and the four objects they share |
+| [`src/main.cpp`](src/main.cpp) | Start here. 110 lines: the three threads, and the mailboxes and queues through which they meet |
 | [`include/explorer_sim/types.hpp`](include/explorer_sim/types.hpp) | The data that crosses between the two halves. No threepp, no ROS |
 | [`include/explorer_sim/mailbox.hpp`](include/explorer_sim/mailbox.hpp), [`thread_safe_queue.hpp`](include/explorer_sim/thread_safe_queue.hpp) | The book's two classes |
 | [`src/sim_node.cpp`](src/sim_node.cpp) | The ROS half: publishers and their QoS, tf, services that wait on a future, parameters |

@@ -33,8 +33,9 @@ namespace explorer_sim {
             return q;
         }
 
-        // Wait for an answer from the simulator thread. std::nullopt if it does not
-        // come: the simulator is shutting down, or its loop is stuck.
+        // Wait for an answer from the simulator thread. std::nullopt if none comes:
+        // the simulator is shutting down, its loop is stuck (a window being dragged
+        // does that on Windows), or the job failed.
         template<typename T>
         std::optional<T> await(std::future<T> future) {
             if (future.wait_for(2s) != std::future_status::ready) {
@@ -42,8 +43,9 @@ namespace explorer_sim {
             }
             try {
                 return future.get();
-            } catch (const std::future_error&) {
-                // The simulator dropped the job without running it (broken promise).
+            } catch (const std::exception&) {
+                // A broken promise (the simulator dropped the job without running it),
+                // or the exception the job itself threw.
                 return std::nullopt;
             }
         }
@@ -101,7 +103,7 @@ namespace explorer_sim {
         //   ros2 param set /sim lidar_noise 0.05
         parameterCallback_ = add_on_set_parameters_callback(
                 [this](const std::vector<rclcpp::Parameter>& parameters) { return onParametersChanged(parameters); });
-        channels_.tuning.set({get_parameter("lidar_noise").as_double(), get_parameter("odom_drift").as_double(), {}});
+        channels_.tuning.set({get_parameter("lidar_noise").as_double(), get_parameter("odom_drift").as_double(), {}, 0});
     }
 
     void SimNode::declareParameters() {
@@ -111,7 +113,7 @@ namespace explorer_sim {
         declare_parameter("headless", false, describe("Run without a visible window", true));
         declare_parameter("width", 1280, describe("Window width in pixels", true));
         declare_parameter("height", 720, describe("Window height in pixels", true));
-        declare_parameter("view", "overview", describe("The window's camera: overview, follow or chase. Can be changed while running (and with the F key)."));
+        declare_parameter("view", "overview", describe("The window's camera: overview, follow or chase. Setting it while running switches the camera. (The F key switches it too, without changing this parameter.)"));
         declare_parameter("effects", true, describe("Ambient occlusion, bloom and floor reflections. Switch off on a slow graphics card (P toggles while running)", true));
         declare_parameter("odom_rate", 30.0, describe("Odometry and tf samples per second", true));
         declare_parameter("sensor_rate", 10.0, describe("Lidar scans and camera frames per second", true));
@@ -175,6 +177,7 @@ namespace explorer_sim {
                     return result;
                 }
                 tuning.view = value;
+                ++tuning.viewRequest;
             }
         }
         channels_.tuning.set(tuning);
@@ -305,10 +308,10 @@ namespace explorer_sim {
     void SimNode::connectServices(Simulator& simulator) {
         // A service callback runs on the executor thread, but only the simulator
         // thread may touch the scene. So each callback posts a request, gets a
-        // std::future back, and waits for the simulator to fulfil it (at most one
-        // frame, about 16 ms). While it waits, this node's other callbacks wait too:
-        // acceptable for a quick operation, and the reason long-running work is an
-        // action and not a service.
+        // std::future back, and waits for the simulator to fulfil it (normally within
+        // one frame, about 16 ms, and never longer than two seconds: see await()).
+        // While it waits, this node's other callbacks wait too: acceptable for a quick
+        // operation, and the reason long-running work is an action and not a service.
 
         resetService_ = create_service<std_srvs::srv::Trigger>(
                 "reset_world",

@@ -89,7 +89,7 @@ namespace explorer_sim {
             overlay.showCameraName(view == View::Overview ? "overview" : view == View::Follow ? "follow" : "chase");
         };
         enterView(view);
-        std::string requestedView;// the last camera asked for through the "view" parameter
+        unsigned handledViewRequest = 0;// the last camera request (through the "view" parameter) acted on
 
         // ---- post-processing --------------------------------------------------------------
         // Without it, a frame is: draw the scene, done. With it, the frame goes through
@@ -217,10 +217,11 @@ namespace explorer_sim {
             if (const auto newTuning = sim.channels.tuning.latest()) {
                 sim.tuning = *newTuning;
                 // A request to switch camera (ros2 param set /sim view chase). The
-                // mailbox keeps returning the newest value, so act on a change only.
-                if (!sim.tuning.view.empty() && sim.tuning.view != requestedView) {
-                    requestedView = sim.tuning.view;
-                    enterView(requestedView == "chase" ? View::Chase : requestedView == "follow" ? View::Follow : View::Overview);
+                // mailbox keeps returning the newest value, so act once per request:
+                // each request carries a number one higher than the last.
+                if (sim.tuning.viewRequest != handledViewRequest) {
+                    handledViewRequest = sim.tuning.viewRequest;
+                    enterView(sim.tuning.view == "chase" ? View::Chase : sim.tuning.view == "follow" ? View::Follow : View::Overview);
                 }
             }
 
@@ -238,7 +239,11 @@ namespace explorer_sim {
             sim.updateRobotModel(elapsed);
             sim.animateFalling(elapsed);
 
-            // 3. Sensors, at their own rate (not the display's).
+            // 3. Sensors, at their own rate (not the display's). A tick happens inside a
+            //    frame, so the rate is "30 a second, as long as the window draws at least
+            //    30 frames a second". On a machine that draws slower, the sensors slow
+            //    down with it: ticks that were missed are not made up for, because a
+            //    lidar scan of a moment that has passed would be a scan of the wrong pose.
             tickAccumulator += elapsed;
             if (tickAccumulator >= tickPeriod) {
                 tickAccumulator = std::fmod(tickAccumulator, tickPeriod);
@@ -355,11 +360,17 @@ namespace explorer_sim {
             }
         });
 
-        // The loop is over. Jobs still in the queue will never run: destroy them, which
-        // breaks their promises and wakes any thread still waiting on a future.
+        // The loop is over. From now on post() refuses new jobs. Those still in the
+        // queue will never run: destroy them, which breaks their promises and wakes any
+        // thread still waiting on a future.
+        sim.loopEnded = true;
         while (sim.jobs.tryPop()) {
         }
         sim.pendingScreenshot.reset();
+
+        // Free the scene now, before the window and its OpenGL context go (they are
+        // local variables of this function and die when it returns).
+        sim.releaseScene();
     }
 
 }// namespace explorer_sim

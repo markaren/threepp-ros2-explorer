@@ -11,6 +11,7 @@ Arguments (name:=value on the command line):
     effects        true   ambient occlusion, bloom, floor reflections (false: faster)
     view           overview   the simulator's camera at start: overview, follow, chase
     headless       false  no visible windows (used for automated tests)
+    screenshot_dir .      where the screenshot services write their PNG files
 
 `ros2 launch explorer_bringup demo.launch.py --show-args` lists them.
 """

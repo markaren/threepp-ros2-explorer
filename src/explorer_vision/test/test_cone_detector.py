@@ -2,9 +2,11 @@
 
 import cv2
 import numpy as np
+import pytest
 
 import synthetic_world as world
-from explorer_vision.cone_detector import Detection, DetectorThresholds, detect_cones
+from explorer_vision.cone_detector import Detection, DetectorThresholds
+from explorer_vision.cone_detector import cone_mask, detect_cones
 
 
 def overlap(detection: Detection, box) -> float:
@@ -109,3 +111,98 @@ def test_hue_limits_are_what_selects_orange():
     green_only = DetectorThresholds(hue_min=50, hue_max=70)
 
     assert detect_cones(image, green_only) == []
+
+
+# From here on: traffic cones with a white reflective band, and the light grey
+# plaster wall that looks just like that band to a colour threshold.
+
+@pytest.mark.parametrize('distance, min_overlap', [(2.0, 0.8), (3.0, 0.8), (4.0, 0.75), (5.0, 0.7)])
+def test_banded_cone_in_front_of_a_light_wall_is_one_box(distance, min_overlap):
+    image = world.draw_scene(wall_bgr=world.PLASTER_BGR)
+    world.draw_cone(image, distance, 0.3, band=True)
+
+    detections = detect_cones(world.through_jpeg(image))
+
+    # One box around tip, band and base. Not two boxes, and not a box that
+    # has grown into the wall.
+    assert len(detections) == 1
+    assert overlap(detections[0], world.cone_box(distance, 0.3)) > min_overlap
+
+
+def test_banded_cone_in_shadow_and_in_front_of_a_dark_wall():
+    image = world.draw_scene()
+    world.draw_cone(image, 2.5, 0.6, brightness=0.6, band=True)
+    world.draw_cone(image, 3.5, -0.6, band=True)
+
+    detections = detect_cones(world.through_jpeg(image))
+
+    assert len(detections) == 2
+    assert overlap(detections[0], world.cone_box(2.5, 0.6)) > 0.8
+    assert overlap(detections[1], world.cone_box(3.5, -0.6)) > 0.75
+
+
+def test_plain_cone_in_front_of_a_light_wall_keeps_its_box():
+    image = world.draw_scene(wall_bgr=world.PLASTER_BGR)
+    world.draw_cone(image, 3.0, 0.3)
+
+    detections = detect_cones(world.through_jpeg(image))
+
+    assert len(detections) == 1
+    assert overlap(detections[0], world.cone_box(3.0, 0.3)) > 0.8
+
+
+def test_white_object_behind_a_cone_is_not_merged_into_it():
+    image = world.draw_scene(wall_bgr=world.PLASTER_BGR)
+    # The white pillar of the scene covers columns 480..510 and reaches far
+    # above the cone that is painted in front of it here.
+    world.draw_cone(image, 3.0, -1.28)
+    world.draw_cone(image, 4.0, 1.0, band=True)
+
+    detections = detect_cones(world.through_jpeg(image))
+
+    assert len(detections) == 2
+    assert overlap(detections[0], world.cone_box(3.0, -1.28)) > 0.8
+    assert overlap(detections[1], world.cone_box(4.0, 1.0)) > 0.75
+
+
+def test_distractors_are_still_rejected_in_front_of_a_light_wall():
+    image = world.draw_scene(wall_bgr=world.PLASTER_BGR)
+    cv2.rectangle(image, (40, 240), (140, 300), world.CONE_BGR, cv2.FILLED)
+    cv2.rectangle(image, (200, 150), (225, 300), world.CONE_BGR, cv2.FILLED)
+    cv2.circle(image, (330, 280), 35, world.CONE_BGR, cv2.FILLED)
+    funnel = np.array([[420, 220], [480, 220], [450, 320]], dtype=np.int32)
+    cv2.fillConvexPoly(image, funnel, world.CONE_BGR)
+    # An orange crate with a white label across it: orange above and below
+    # the white, so the label joins the crate. It is still not cone-shaped.
+    cv2.rectangle(image, (540, 230), (620, 300), world.CONE_BGR, cv2.FILLED)
+    cv2.rectangle(image, (540, 255), (620, 270), world.BAND_BGR, cv2.FILLED)
+
+    assert detect_cones(world.through_jpeg(image)) == []
+
+
+def column_image(rows) -> np.ndarray:
+    """Build a 9 pixel wide BGR image from a list of (row count, colour)."""
+    stripes = [np.full((count, 9, 3), colour, dtype=np.uint8) for count, colour in rows]
+    return np.vstack(stripes)
+
+
+def test_white_needs_orange_above_and_below_within_reach():
+    grey = (60, 60, 60)
+    image = column_image([
+        (10, world.BAND_BGR),   # rows 0..9: white with orange only below
+        (10, world.CONE_BGR),   # rows 10..19
+        (20, world.BAND_BGR),   # rows 20..39: white between orange and orange
+        (10, world.CONE_BGR),   # rows 40..49
+        (10, world.BAND_BGR),   # rows 50..59: white with orange only above
+        (10, grey),             # rows 60..69: too dark to be white
+    ])
+
+    joined = cone_mask(image, DetectorThresholds(band_reach=30))[:, 4] > 0
+    assert not joined[:8].any()
+    assert joined[10:50].all()
+    assert not joined[52:].any()
+
+    # The same picture with a reach shorter than the white gap: its middle
+    # has no orange near enough on either side, and stays empty.
+    too_short = cone_mask(image, DetectorThresholds(band_reach=4))[:, 4] > 0
+    assert not too_short[27:33].any()

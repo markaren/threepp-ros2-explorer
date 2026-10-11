@@ -347,12 +347,21 @@ namespace explorer_sim {
             scene->add(slab);
         }
 
-        // Traffic cones: RGB (255, 106, 0). A little self-illumination keeps them
-        // orange in the shadow of a rack. Each stands on a rubber foot, which is too
-        // low for the lidar and so is not one of its targets.
-        auto coneMaterial = makeMaterial(0xff6a00, 0.6f);
-        coneMaterial->emissive = Color(0xff6a00);
-        coneMaterial->emissiveIntensity = 0.25f;
+        // Traffic cones. Their texture (tools/make_cone_texture.py) is orange plastic,
+        // RGB (255, 106, 0), with one white reflective band and some scuffs. A little
+        // self-illumination, through the same texture, keeps them orange in the shadow
+        // of a rack. Each stands on a rubber foot, which is too low for the lidar and
+        // so is not one of its targets.
+        auto coneMaterial = makeMaterial(0xff6a00, 0.55f);
+        if (auto coneTexture = loadTexture(assets / "cone.png", true)) {
+            coneMaterial->map = coneTexture;
+            coneMaterial->color = Color(0xffffff);// the texture brings the colour
+            coneMaterial->emissiveMap = coneTexture;
+            coneMaterial->emissive = Color(0xffffff);
+        } else {
+            coneMaterial->emissive = Color(0xff6a00);
+        }
+        coneMaterial->emissiveIntensity = 0.22f;
         auto coneGeometry = ConeGeometry::create(static_cast<float>(Cone::baseRadius), static_cast<float>(Cone::height), 32);
         auto footGeometry = CylinderGeometry::create(0.23f, 0.25f, 0.02f, 32);
         const auto footMaterial = makeMaterial(0x1d2026, 0.9f);
@@ -576,6 +585,27 @@ namespace explorer_sim {
         } else {
             scene->background = Color(windowBackground);
         }
+    }
+
+    // Let go of every mesh, material and texture. Called at the end of run(), while the
+    // window and its OpenGL context still exist: GPU resources should be released by
+    // the thread, and in the context, that created them.
+    void Simulator::Impl::releaseScene() {
+        lidarTargets.clear();
+        droppedMeshes.clear();
+        droppedVisuals.clear();
+        falling.clear();
+        wheelLeft = wheelRight = lidarHead = nullptr;
+        lidarPoints.reset();
+        lidarRays.reset();
+        robotEyeCamera.reset();
+        cameraSensor.reset();
+        robotMarker.reset();
+        robotModel.reset();
+        floorPolish.reset();
+        crateMaterial.reset();
+        warehousePhoto.reset();
+        scene.reset();
     }
 
     // A crate has been dropped into the world. Give it its two meshes: the plain box the

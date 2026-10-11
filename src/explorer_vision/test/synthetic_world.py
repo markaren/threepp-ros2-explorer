@@ -33,6 +33,18 @@ FLOOR_BGR = (120, 120, 120)
 WALL_BGR = (136, 112, 96)
 TEAL_BGR = (128, 128, 0)
 WHITE_BGR = (235, 235, 235)
+# Light grey plaster: as colourless as the white band on a cone, and almost
+# as bright. The detector must not take it for a part of the cone.
+PLASTER_BGR = (200, 205, 208)
+
+# The white reflective band: its colour, and where it sits on the cone as a
+# fraction of the height, measured from the floor.
+BAND_BGR = (240, 240, 238)
+BAND = (0.46, 0.62)
+# The rubber foot: a dark disc, a little wider than the cone and 2 cm high.
+FOOT_BGR = (38, 32, 29)
+FOOT_RADIUS = 0.24
+FOOT_HEIGHT = 0.02
 
 
 def intrinsics() -> CameraIntrinsics:
@@ -67,10 +79,10 @@ def cone_box(x: float, y: float) -> Tuple[float, float, float, float]:
             float(outline[:, 0].max()), float(outline[:, 1].max()))
 
 
-def draw_scene(seed: int = 0) -> np.ndarray:
+def draw_scene(seed: int = 0, wall_bgr: Tuple[int, int, int] = WALL_BGR) -> np.ndarray:
     """Paint a warehouse-like background with no orange in it."""
     image = np.empty((IMAGE_HEIGHT, IMAGE_WIDTH, 3), dtype=np.uint8)
-    image[:205] = WALL_BGR
+    image[:205] = wall_bgr
     image[205:] = FLOOR_BGR
     cv2.rectangle(image, (60, 120), (170, 230), TEAL_BGR, cv2.FILLED)
     cv2.rectangle(image, (480, 40), (510, 215), WHITE_BGR, cv2.FILLED)
@@ -82,22 +94,51 @@ def draw_scene(seed: int = 0) -> np.ndarray:
     return np.clip(image.astype(np.float64) + noise, 0, 255).astype(np.uint8)
 
 
-def draw_cone(image: np.ndarray, x: float, y: float, brightness: float = 1.0) -> None:
-    """Paint a cone standing at (x, y) in `base_link`, lit from the left.
+def ring_outline(x: float, y: float, z_low: float, z_high: float,
+                 radius_low: float, radius_high: float) -> np.ndarray:
+    """Return the silhouette of a slice of a cone (or of a disc) as a polygon."""
+    points = []
+    for z, radius in ((z_low, radius_low), (z_high, radius_high)):
+        for step in range(48):
+            angle = 2.0 * math.pi * step / 48
+            points.append(project(x + radius * math.cos(angle),
+                                  y + radius * math.sin(angle), z))
+    return cv2.convexHull(np.array(points, dtype=np.float32)).reshape(-1, 2)
+
+
+def fill_two_tone(image: np.ndarray, outline: np.ndarray, split_u: float,
+                  bgr: Tuple[int, int, int], brightness: float) -> None:
+    """Fill a polygon, bright to the left of column split_u and dark to the right.
 
     The right half is drawn darker, like a surface turned away from the sun:
     the brightness changes across the cone, the hue does not.
     """
-    lit = tuple(int(channel * brightness) for channel in CONE_BGR)
-    shaded = tuple(int(channel * brightness * 0.45) for channel in CONE_BGR)
-
-    outline = cone_outline(x, y)
+    lit = tuple(int(channel * brightness) for channel in bgr)
+    shaded = tuple(int(channel * brightness * 0.45) for channel in bgr)
     cv2.fillConvexPoly(image, np.round(outline).astype(np.int32), shaded, cv2.LINE_AA)
-
-    apex_u = project(x, y, CONE.height)[0]
-    left_half = outline[outline[:, 0] <= apex_u]
+    left_half = outline[outline[:, 0] <= split_u]
     if len(left_half) >= 3:
         cv2.fillConvexPoly(image, np.round(left_half).astype(np.int32), lit, cv2.LINE_AA)
+
+
+def draw_cone(image: np.ndarray, x: float, y: float, brightness: float = 1.0,
+              band: bool = False) -> None:
+    """Paint a cone standing at (x, y) in `base_link`, lit from the left.
+
+    With `band`, it is the simulator's traffic cone: a white reflective band
+    between 46 % and 62 % of the height, and a low dark rubber foot.
+    """
+    apex_u = project(x, y, CONE.height)[0]
+    if band:
+        foot = ring_outline(x, y, 0.0, FOOT_HEIGHT, FOOT_RADIUS, FOOT_RADIUS)
+        cv2.fillConvexPoly(image, np.round(foot).astype(np.int32), FOOT_BGR, cv2.LINE_AA)
+
+    fill_two_tone(image, cone_outline(x, y), apex_u, CONE_BGR, brightness)
+
+    if band:
+        z_low, z_high = BAND[0] * CONE.height, BAND[1] * CONE.height
+        ring = ring_outline(x, y, z_low, z_high, CONE.radius_at(z_low), CONE.radius_at(z_high))
+        fill_two_tone(image, ring, apex_u, BAND_BGR, brightness)
 
 
 def through_jpeg(image: np.ndarray, quality: int = 80) -> np.ndarray:

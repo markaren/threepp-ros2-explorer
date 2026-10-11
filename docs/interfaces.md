@@ -46,10 +46,10 @@ threepp y.
 
 | Topic | Type | Publisher | Subscribers | Rate | QoS |
 |---|---|---|---|---|---|
-| `scan` | `sensor_msgs/LaserScan` | `sim` | `mapper`, `safety_monitor`, `dashboard` | 10 Hz | sensor data (best effort, depth 5) |
+| `scan` | `sensor_msgs/LaserScan` | `sim` | `mapper`, `safety_monitor`, `cone_spotter`, `dashboard` | 10 Hz | sensor data (best effort, depth 5) |
 | `odom` | `nav_msgs/Odometry` | `sim` | anyone | 30 Hz | reliable, depth 10 |
 | `tf`, `tf_static` | `tf2_msgs/TFMessage` | `sim`, `mapper` | all | | tf2 defaults |
-| `camera/image/compressed` | `sensor_msgs/CompressedImage` (`jpeg`) | `sim` | `cone_spotter`, `rqt_image_view` | 10 Hz | sensor data |
+| `camera/image/compressed` | `sensor_msgs/CompressedImage` (`jpeg`) | `sim` | `cone_spotter`, `dashboard`, `rqt_image_view` | 10 Hz | sensor data |
 | `camera/camera_info` | `sensor_msgs/CameraInfo` | `sim` | `cone_spotter` | 10 Hz | sensor data |
 | `detections` | `vision_msgs/Detection2DArray` | `cone_spotter` | anyone | per image | reliable, depth 10 |
 | `cones` | `visualization_msgs/MarkerArray` | `cone_spotter` | `dashboard`, RViz | 2 Hz | reliable, transient local, depth 1 |
@@ -83,11 +83,13 @@ Details that matter:
   namespace `"cones"`, ids stable (cone 0 stays id 0). A `DELETEALL` marker comes first.
 * **`cmd_vel_nav`** is only published while the explorer has a job: 20 Hz while driving,
   one zero command when it stops, then silence.
-* **`safety_stop`** is `true` while the safety monitor is cutting forward speed to zero:
-  something is within `stop_clearance` (0.10 m) of the robot's front edge, in the strip
-  of floor the robot would sweep driving straight on, or no scan has arrived for 0.5 s.
-  Between `slow_clearance` (0.50 m) and `stop_clearance` forward speed is scaled down
-  without the flag being set. Turning is never limited.
+* **`safety_stop`** is `true` while forward motion is blocked: something is within
+  `stop_clearance` (0.10 m) of the robot's front edge, in the strip of floor the robot
+  would sweep driving straight on, or no scan has arrived for 0.5 s (so it is also
+  `true` before the first scan). It is a state, worked out from every scan, whether or
+  not anybody is sending commands. Between `slow_clearance` (0.50 m) and
+  `stop_clearance` forward speed is scaled down without the flag being set. Turning is
+  only stopped when there is no scan at all.
 * **`cmd_vel`**: only `linear.x` (m/s) and `angular.z` (rad/s) are used. The sim limits them to
   0.8 m/s and 2.0 rad/s, limits acceleration, and **stops the robot if no command arrives for
   0.5 s**. A controller must therefore keep publishing, exactly as on a real robot.
@@ -103,7 +105,7 @@ Details that matter:
 | Service | Type | Server | Effect |
 |---|---|---|---|
 | `reset_world` | `std_srvs/Trigger` | `sim` | Robot back to the start pose, dropped obstacles removed |
-| `spawn_obstacle` | `explorer_interfaces/SpawnObstacle` | `sim` | Drops a crate at (x, y) in the `odom` frame |
+| `spawn_obstacle` | `explorer_interfaces/SpawnObstacle` | `sim` | Drops a crate at (x, y) in the simulated world's own coordinates (the `odom` frame, as long as the odometry has not drifted) |
 | `clear_map` | `std_srvs/Trigger` | `mapper` | Forgets the map |
 | `sim/screenshot`, `dashboard/screenshot` | `std_srvs/Trigger` | `sim`, `dashboard` | Writes the current frame to a PNG, answers with its path |
 
@@ -129,7 +131,10 @@ wants progress reports while it runs, and must be able to cancel it.
 | `cone_spotter` | `hue_min`, `hue_max`, `saturation_min`, `value_min` | what counts as "orange" |
 | `cone_spotter` | `max_range`, `distance_tolerance` | which detections are placed on the map |
 
-Everything else is read once at start. `ros2 param describe <node> <parameter>` says which.
+Everything else is read once, when the node starts, and is declared read-only: a
+`ros2 param set` on it is refused, with the reason. `ros2 param describe <node> <name>`
+shows which is which. To change those, edit `src/explorer_bringup/config/explorer.yaml`
+and restart.
 
 ## A note on tf and namespaces
 

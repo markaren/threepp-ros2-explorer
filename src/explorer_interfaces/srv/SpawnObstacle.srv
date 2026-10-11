@@ -1,9 +1,9 @@
 # Drop a crate into the simulated world. A service fits: it is one quick request with one
 # answer. (Compare with action/Explore.action, which runs for minutes.)
 
-float32 x       # m, in the odom frame
-float32 y       # m, in the odom frame
+float32 x       # m, in the simulated world's own coordinates. They coincide with the
+float32 y       # odom frame as long as the odometry has not drifted (odom_drift = 0)
 float32 size    # side length in m. 0 means "use the default" (0.6 m)
 ---
-bool success    # false if the spot is outside the building or on top of the robot
+bool success    # false if the spot is outside the building, occupied, or on top of the robot
 string message

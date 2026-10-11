@@ -76,6 +76,7 @@ namespace explorer_sim {
         // ---- what other threads may touch ---------------------------------------------
         ThreadSafeQueue<std::function<void()>> jobs;// work posted to the simulator thread
         std::atomic<bool> stopRequested{false};
+        std::atomic<bool> loopEnded{false};// run() has returned: nobody will take jobs any more
 
         // ---- everything below belongs to the simulator thread --------------------------
         World world = World::warehouse();
@@ -137,12 +138,25 @@ namespace explorer_sim {
         // Run `job` on the simulator thread and deliver its return value through a
         // future. This is the promise/future pair from Part 3 of the book: the caller
         // keeps the future, the job carries the promise across the thread border.
+        //
+        // Two things can go wrong, and in both the caller must hear about it rather
+        // than wait forever. If the job throws, the exception is put into the promise
+        // and comes out of the caller's future.get(). If the frame loop has already
+        // ended, the job is not queued at all: the promise is destroyed right here,
+        // which the caller's future reports as a "broken promise".
         template<typename Result>
         std::future<Result> post(std::function<Result()> job) {
             auto promise = std::make_shared<std::promise<Result>>();
             auto future = promise->get_future();
+            if (loopEnded) {
+                return future;
+            }
             jobs.push([promise, job = std::move(job)] {
-                promise->set_value(job());
+                try {
+                    promise->set_value(job());
+                } catch (...) {
+                    promise->set_exception(std::current_exception());
+                }
             });
             return future;
         }
@@ -155,6 +169,7 @@ namespace explorer_sim {
         void backdrop(bool warehouse);
         void addCrateVisual(const Box& crate);
         void removeDroppedVisuals();
+        void releaseScene();
         void updateRobotModel(double elapsed);
         void animateFalling(double elapsed);
 

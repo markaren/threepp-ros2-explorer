@@ -110,7 +110,8 @@ class Mapper(Node):
         # Sensor data wants the opposite contract: best effort, small queue. If a scan is
         # lost, the next one is 0.1 s away and more useful than a resent old one.
         # A reliable subscriber would also not match the simulator's best-effort
-        # publisher at all: no error, just silence. (`ros2 topic info -v scan` shows both.)
+        # publisher at all: silence, and one warning in the log when the two discover
+        # each other. (`ros2 topic info -v scan` shows both sides' settings.)
         self._pending_scans: deque[tuple[LaserScan, float]] = deque(maxlen=MAX_PENDING_SCANS)
         self._scan_subscription = self.create_subscription(
             LaserScan, 'scan', self._on_scan, qos_profile_sensor_data)
@@ -137,8 +138,14 @@ class Mapper(Node):
             f'({geometry.width} x {geometry.height} cells)')
 
     def _parameter(self, name: str, default, description: str):
-        """Declare a parameter with a description and return its value."""
-        descriptor = ParameterDescriptor(description=description)
+        """Declare a parameter with a description and return its value.
+
+        This node reads its parameters once, here, at start. So they are declared
+        read-only: a later "ros2 param set" is refused with a reason, instead of being
+        accepted and then ignored. (A launch file or YAML file can still set them: that
+        happens at declaration.)
+        """
+        descriptor = ParameterDescriptor(description=description, read_only=True)
         return self.declare_parameter(name, default, descriptor).value
 
     def _publish_map_to_odom(self) -> None:

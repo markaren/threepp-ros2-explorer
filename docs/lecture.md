@@ -63,7 +63,8 @@ two publishers, a mutex, and a comment about why the mutex is there.
 
 ## 4. Throw something at it (2 min)
 
-Simulator in chase view (`F`). Click on the floor a metre in front of the robot. A crate
+Simulator in chase view (press `F` until the key strip says "camera: chase"). Click on
+the floor a metre in front of the robot. A crate
 falls. The robot brakes, the crate appears in the dashboard's map a moment later, the
 yellow path bends around it.
 
@@ -84,15 +85,17 @@ ros2 param set /sim lidar_noise 0.01
 ```
 
 If there is time, the bigger one: `ros2 param set /sim odom_drift 1.0`. Within a minute
-the dashboard's robot is driving through walls while the simulator's is fine.
+the map in the dashboard bends: everything the robot maps from now on is drawn at an
+angle to what it mapped before (about 40 degrees and 6 m off after 40 seconds), while
+in the simulator nothing has changed.
 
 > The left window is right. The right window is what the robot believes. This is the
 > problem SLAM exists to solve.
 
 ## 6. Where your project fits (2 min)
 
-Show `src/explorer_sim/src/main.cpp`: three threads, four shared objects, the book's
-`Mailbox` and `ThreadSafeQueue`.
+Show `src/explorer_sim/src/main.cpp`: three threads that meet only in mailboxes and
+queues, the book's `Mailbox` and `ThreadSafeQueue`.
 
 > This is the simulator you are building, with a ROS node standing next to its render
 > loop. If yours publishes `scan` and `tf` and listens to `cmd_vel`, the Python side

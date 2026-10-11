@@ -30,7 +30,7 @@ ros2 run explorer_dashboard dashboard --ros-args -p auto_explore:=true
 | [`convert.py`](explorer_dashboard/convert.py) | no | no | ROS axes to threepp axes, grid to picture (numpy) |
 | [`dashboard_node.py`](explorer_dashboard/dashboard_node.py) | yes | no | Subscriptions and their QoS, tf2, the action client, the service clients |
 | [`scene.py`](explorer_dashboard/scene.py) | no | yes | The 3D picture: floor texture, walls, robot, trail, markers |
-| [`hud.py`](explorer_dashboard/hud.py) | no | yes | The 2D overlay: status, camera picture, legend |
+| [`hud.py`](explorer_dashboard/hud.py) | no | yes | The 2D overlay: status and chart, camera picture, legend, key caps, safety stop banner |
 | [`window.py`](explorer_dashboard/window.py) | no | yes | Canvas, renderer, camera, keys |
 | [`app.py`](explorer_dashboard/app.py) | no | no | The render loop that joins the two halves |
 
@@ -47,3 +47,12 @@ newest message in a mailbox.
   `G` aims at the centre of the view.
 * `threepp` is a pip package, not a ROS package, so `rosdep` does not know it. It is
   installed by `pixi.toml` (`[feature.jazzy.pypi-dependencies]`).
+
+## The overlay
+
+The cards, fonts and key caps are drawn with `threepp.lesson.Hud`, the 2D toolkit that
+ships inside the `threepp` wheel and draws the overlays of the lab's lesson films. It is
+immediate mode: `hud.py` calls `begin()`, describes every panel and text from scratch,
+and calls `end()`, and the toolkit reuses pooled meshes behind that. The dashboard only
+describes the overlay again when something it shows has changed (about twice a second),
+and its design space is always 720 units high, so the overlay scales with the window.

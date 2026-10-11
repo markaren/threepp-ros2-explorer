@@ -42,6 +42,7 @@ namespace explorer_sim {
         double lidarNoise = 0.01;// standard deviation of the range noise, m
         double odomDrift = 0.0;  // how much the wheel odometry lies. 0 = perfect
         std::string view;        // switch the window's camera: overview, follow, chase. Empty = leave it
+        unsigned viewRequest = 0;// counts the requests, so asking for the same view twice is seen as two requests
     };
 
     struct LaserScan {

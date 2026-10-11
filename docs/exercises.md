@@ -21,7 +21,9 @@ pixi run -e jazzy test
 **1. A battery.** Make the simulator publish `battery` (`sensor_msgs/BatteryState`) once
 a second. Charge drops with distance driven and a little with time. Show the percentage
 in the simulator's status line.
-*Touches:* `types.hpp` (a field in `Telemetry`), `simulator.cpp`, `sim_node.cpp`.
+*Touches:* `types.hpp` (a field in `Telemetry`), `simulator.cpp` (where the charge
+is computed, in `step()`), `window.cpp` (where a `Telemetry` sample is filled),
+`sim_node.cpp` (where it is published), `overlay.cpp` (the status card).
 *Think about:* which thread computes it, which thread publishes it, and what carries it
 between them.
 

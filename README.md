@@ -4,8 +4,8 @@
 
 A small robot is switched on in a warehouse it has never seen. It has a lidar, a camera
 and two wheels. Nobody drives it. Four or five minutes later it has driven through every
-aisle, drawn a map of the building, found the traffic cones standing around in it
-(usually all six), and parked where it started.
+aisle, drawn a map of the building, found most of the traffic cones standing around in
+it, and parked where it started.
 
 Everything you see is a ROS 2 graph of six nodes, two written in C++ and four in Python,
 and both languages draw their picture with [threepp](https://github.com/markaren/threepp):
@@ -27,6 +27,8 @@ Part 6. [Where to find what](#where-to-find-what) says in which file.
 
 You need Windows 10 or 11, [pixi](https://pixi.sh), git, and Visual Studio 2022 with the
 "Desktop development with C++" workload (the same compiler the course already uses).
+About 6 GB of disk, and a graphics card that does OpenGL 3.3 (any laptop of the last
+ten years; see `effects:=false` below if it struggles).
 
 ```powershell
 git clone <this repository>
@@ -162,7 +164,7 @@ page alone, and worked together on the first run.
 
 | Concept | The clearest example of it here |
 |---|---|
-| Node, publisher, subscriber | [`safety_monitor.cpp`](src/explorer_safety/src/safety_monitor.cpp): 160 lines, all of it |
+| Node, publisher, subscriber | [`safety_monitor.cpp`](src/explorer_safety/src/safety_monitor.cpp): 190 lines, all of it |
 | The same in Python | [`mapper_node.py`](src/explorer_nav/explorer_nav/mapper_node.py) |
 | QoS: sensor data vs reliable vs "latched" | [`sim_node.cpp`](src/explorer_sim/src/sim_node.cpp) (publishers), `safety_monitor.cpp` (`safety_stop`), the table in [interfaces.md](docs/interfaces.md) |
 | Custom message, service, action | [`explorer_interfaces`](src/explorer_interfaces): three small files, each explains itself |
@@ -184,7 +186,7 @@ page alone, and worked together on the first run.
 | Part | Where it shows up |
 |---|---|
 | 1. Smart pointers, lambdas, `std::chrono` | Everywhere in `explorer_sim`. `shared_ptr<const CameraFrame>` in [`types.hpp`](src/explorer_sim/include/explorer_sim/types.hpp) hands a 690 kB picture between threads by copying a pointer |
-| 2. Threads, shared data, mailbox and queue | [`main.cpp`](src/explorer_sim/src/main.cpp) of the simulator: three threads, four shared objects, no other mutex. `Mailbox` and `ThreadSafeQueue` are the book's classes, unchanged |
+| 2. Threads, shared data, mailbox and queue | [`main.cpp`](src/explorer_sim/src/main.cpp) of the simulator: three threads that meet only in three mailboxes and two queues, and no mutex outside those. `Mailbox` and `ThreadSafeQueue` are the book's classes (the queue with one method added, `tryPop`) |
 | 3. Futures and promises, fixed timestep, rolling deadlines | `Simulator::requestSpawn` in [`simulator.cpp`](src/explorer_sim/src/simulator.cpp): a service callback posts a job to the render thread and waits on a future. The fixed-timestep loop and `sleep_until` are in [`window.cpp`](src/explorer_sim/src/window.cpp) |
 | 4. Typed pub/sub, schemas, QoS, streaming JPEG | `docs/interfaces.md`, `explorer_interfaces`, the camera publisher in `sim_node.cpp` |
 | 5. CMake targets, dependencies, "one owner per library", C++ from Python | `explorer_sim/CMakeLists.txt` (FetchContent, and a library that cannot include ROS by construction). The dashboard drives the same C++ engine through its Python bindings |
@@ -205,17 +207,22 @@ Start the demo, open a second terminal in this folder, and enter the environment
 2. **Make the lidar worse while it runs.**
    `ros2 param set /sim lidar_noise 0.08`. The walls in the dashboard grow fuzzy. Now
    `0.3`. At what point does exploration stop finishing, and why?
-3. **Let the odometry lie.** Restart, then `ros2 param set /sim odom_drift 1.0`. The map
-   starts to smear and the robot ends up "inside" walls in the dashboard while it is
-   fine in the simulator. Plot the error:
+3. **Let the odometry lie.** Restart, then `ros2 param set /sim odom_drift 1.0`. Within a
+   minute the map bends: new walls are drawn at an angle to the old ones, while in the
+   simulator the robot is driving as well as before. Plot the error:
    `ros2 topic echo /odom --field pose.pose.position` against `/ground_truth`. This is
    the problem that SLAM solves, and why `map -> odom` exists as a separate transform.
-4. **Kill the brain.** Stop the `explorer` process in Task Manager mid-drive. The robot
-   stops within half a second. Find the two places in the code that guarantee it
-   (hint: one is in the simulator, one would be in any real motor driver).
-5. **Blind the reflex.** `ros2 topic pub /scan sensor_msgs/msg/LaserScan` with nothing
-   useful in it does not fool it. Stopping the simulator's scan does: what does the
-   safety monitor do without scans, and why is that the right default?
+4. **Kill the brain.** Stop the `explorer` process in Task Manager mid-drive. Half a
+   second later the robot starts braking, and it stands still within a second. Find
+   the code that guarantees it (it is in the simulator), and ask yourself where that
+   code would have to live on a real robot.
+5. **Fool the reflex.** The safety monitor believes whatever arrives on `scan`. Start
+   only `sim.launch.py`, drive at a wall with the teleop command above: it stops you.
+   Now publish fake scans that claim the way is clear, from another terminal:
+   `ros2 topic pub -r 50 /scan sensor_msgs/msg/LaserScan "{angle_min: -3.14, angle_increment: 0.0175, range_min: 0.1, range_max: 8.0, ranges: [8.0, 8.0, 8.0]}"`
+   and drive at the wall again. The fake messages outnumber the real ones five to one,
+   the monitor acts on whichever came last, and it no longer stops you. Nothing in
+   ROS 2 says who may publish on a topic. What would a real safety system do about that?
 6. **Measure the camera.** `ros2 topic hz /camera/image/compressed`, then `ros2 topic bw`.
    Work out what the raw image would cost per second and compare.
 7. **Watch the detector work.** The dashboard's camera panel shows the picture with a
@@ -223,12 +230,15 @@ Start the demo, open a second terminal in this folder, and enter the environment
    `ros2 param set /cone_spotter saturation_min 30`, and see what else is "orange".
    (The same picture is the topic `/camera/annotated/compressed`, for `rqt_image_view`.)
 8. **Break the QoS on purpose.** In `safety_monitor.cpp`, subscribe to `scan` with a
-   plain `10` instead of `SensorDataQoS()`. Rebuild, run. No error, no data. Find out
-   why with `ros2 topic info /scan --verbose`.
+   plain `10` instead of `SensorDataQoS()`. Rebuild, run. No data, and all the node
+   says about it is one warning at start that is easy to miss. Find out why with
+   `ros2 topic info /scan --verbose`.
 9. **Take the wheel.** Start with `auto_explore:=false`, press `G` in the dashboard to
    send the robot somewhere. Then do the same from RViz with "2D Goal Pose". Two
    programs, one topic.
-10. **Send the goal yourself.**
+10. **Send the goal yourself.** Start with `auto_explore:=false` (or wait until the
+    first exploration has finished: the explorer refuses a second goal while one is
+    running), then
     `ros2 action send_goal /explore explorer_interfaces/action/Explore "{time_limit: 60.0, return_home: true}" --feedback`
 
 [docs/exercises.md](docs/exercises.md) has larger tasks, from "add a battery topic" to
@@ -244,7 +254,7 @@ Start the demo, open a second terminal in this folder, and enter the environment
 | The first `pixi run` prints "Could not find activation scripts" | Harmless before the first build: `install/` does not exist yet |
 | Windows asks about the firewall | DDS finds other nodes over the network. Allow it for private networks |
 | Everyone in the room sees everyone else's robot | You share a network and a ROS domain. Give each machine its own: `$env:ROS_DOMAIN_ID = "17"` (0 to 101) before starting |
-| The simulator is slow | `effects:=false`, and a smaller window: `ros2 launch explorer_bringup demo.launch.py effects:=false` |
+| The simulator is slow | `ros2 launch explorer_bringup demo.launch.py effects:=false`, and a smaller window (`width` and `height` under `sim:` in [`explorer.yaml`](src/explorer_bringup/config/explorer.yaml)). Below 30 frames a second the simulated sensors slow down too |
 | `ros2 topic list` hangs or shows stale topics | The ROS daemon is confused. `ros2 daemon stop`, then try again |
 
 ## What this is not
@@ -257,8 +267,9 @@ It is a teaching demo, and it cuts the corners that would hide the ideas:
   and a map, and it keeps the simulator's only dependency threepp.
 * **Nobody plans for the camera.** The explorer goes where the lidar has not seen yet.
   The lidar sees all around and 8 m far, the camera 80 degrees ahead and 5 m, so a cone
-  the robot happens never to face is never found. In four recorded runs it found
-  6, 6, 6 and 5 of the six. Fixing that is one of the [exercises](docs/exercises.md).
+  the robot happens never to face is never found. In six recorded runs it found
+  6, 6, 6, 5, 6 and 4 of the six, and each cone it did find was placed within a few
+  centimetres. Fixing that is one of the [exercises](docs/exercises.md).
 * **The cone detector is a colour threshold**, not a neural network. The interface is
   the one the book uses (`vision_msgs/Detection2DArray`), so swapping in the ONNX
   detector from Part 6 changes one Python module.

@@ -152,7 +152,7 @@ Set them on the command line, for example
 | mapper | `resolution` | 0.1 | 0.05 | A sharper map, four times the cells, everything slower. Thin stripes of unknown cells appear between distant beams |
 | mapper | `log_odds_hit` | 0.85 | 0.2 | Walls need many scans to appear, the robot plans through them at first |
 | mapper | `log_odds_miss` | -0.4 | -2.0 | Walls seen at a shallow angle get erased again: holes in the map |
-| mapper | `log_odds_max` | 3.5 | 50 | A removed obstacle (`reset_world`) stays on the map for a very long time |
+| mapper | `log_odds_max` | 3.5 | 50.0 | A removed obstacle (`reset_world`) stays on the map for a very long time |
 | explorer | `inflation_margin` | 0.14 | 0.0 | Paths scrape past corners and the safety node keeps stopping the robot |
 | explorer | `inflation_margin` | 0.14 | 0.5 | Aisles close up: frontiers turn grey (unreachable), exploration ends early |
 | explorer | `comfort_cells` | 3 | 0 | Shortest paths, tight around every corner |
@@ -171,8 +171,8 @@ The unit tests need numpy and pytest, but no ROS and no build:
 
 Add `-s` to see the measured times of the two speed tests (scan integration: budget 10 ms,
 full replan: budget 100 ms, both asserted with a factor of three in reserve so a busy
-machine does not fail them). After `pixi run -e jazzy build`, `pixi run -e jazzy test` runs
-the same tests through colcon.
+machine does not fail them). `pixi run -e jazzy test` runs these tests and the ones of
+`explorer_vision` in one go.
 
 ## Running the nav stack without the simulator
 
