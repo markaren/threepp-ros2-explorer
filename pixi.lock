@@ -145,6 +145,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/win-64/contourpy-1.4.0-py312h78d62e6_1.conda
       - conda: https://prefix.dev/conda-forge/win-64/coverage-7.16.2-py312h6fa65f5_0.conda
       - conda: https://prefix.dev/conda-forge/win-64/cppcheck-2.22.0-py312h9df87ca_1.conda
+      - conda: https://prefix.dev/conda-forge/win-64/cppzmq-4.11.0-h0000e93_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/cpython-3.12.15-py312hd8ed1ab_1.conda
       - conda: https://prefix.dev/conda-forge/win-64/cryptography-50.0.2-py311h67a9792_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/cycler-0.12.1-pyhcf101f3_2.conda
@@ -303,6 +304,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/win-64/libraw-0.22.2-h345c428_0.conda
       - conda: https://prefix.dev/conda-forge/win-64/librbio-4.3.4-h8c1c262_7100102.conda
       - conda: https://prefix.dev/conda-forge/win-64/librsvg-2.62.4-h5506a08_0.conda
+      - conda: https://prefix.dev/conda-forge/win-64/libsodium-1.0.22-h6a83c73_3.conda
       - conda: https://prefix.dev/conda-forge/win-64/libspex-3.2.3-h2f847cc_7100102.conda
       - conda: https://prefix.dev/conda-forge/win-64/libspqr-4.3.4-h60c7c62_7100102.conda
       - conda: https://prefix.dev/conda-forge/win-64/libsqlite-3.54.0-hf5d6505_101.conda
@@ -399,6 +401,13 @@ environments:
       - conda: https://prefix.dev/conda-forge/win-64/qt6-main-6.12.0-pl5321hfcac499_1.conda
       - conda: https://prefix.dev/conda-forge/win-64/rav1e-0.8.1-h007690e_0.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-desktop-0.11.0-h9490d1a_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-behaviors-1.3.13-h9490d1a_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-bt-navigator-1.3.13-h9490d1a_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-controller-1.3.13-h9490d1a_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-lifecycle-manager-1.3.13-h9490d1a_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-navfn-planner-1.3.13-h9490d1a_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-planner-1.3.13-h9490d1a_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-regulated-pure-pursuit-controller-1.3.13-h9490d1a_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-rmw-cyclonedds-cpp-2.2.4-h9490d1a_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-slam-toolbox-2.8.5-h9490d1a_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-vision-msgs-4.1.1-h9490d1a_25.conda
@@ -451,6 +460,7 @@ environments:
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-ament-uncrustify-0.17.5-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-ament-xmllint-0.17.5-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-angles-1.16.1-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-behaviortree-cpp-4.10.0-np2py312h27c1513_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-bond-4.2.0-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-bondcpp-4.2.0-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-builtin-interfaces-2.0.4-np2py312hdd89193_25.conda
@@ -467,6 +477,7 @@ environments:
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-depthimage-to-laserscan-2.5.1-np2py312ha56898c_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-desktop-0.11.0-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-diagnostic-msgs-5.3.8-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-diagnostic-updater-4.2.7-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-distro-mutex-0.19.0-jazzy_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-domain-coordinator-0.12.2-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-dummy-map-server-0.33.11-np2py312hdd89193_25.conda
@@ -494,6 +505,7 @@ environments:
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-fastrtps-2.14.7-np2py312h679732a_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-fastrtps-cmake-module-3.6.4-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-foonathan-memory-vendor-1.3.1-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-geographic-msgs-1.0.6-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-geometry-msgs-5.3.8-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-geometry2-0.36.23-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-gmock-vendor-1.14.9000-np2py312hdd89193_25.conda
@@ -530,7 +542,23 @@ environments:
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-map-msgs-2.4.1-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-mcap-vendor-0.26.11-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-message-filters-4.11.17-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav-2d-msgs-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav-2d-utils-1.3.13-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav-msgs-5.3.8-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-behavior-tree-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-behaviors-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-bt-navigator-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-common-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-controller-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-core-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-costmap-2d-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-lifecycle-manager-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-msgs-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-navfn-planner-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-planner-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-regulated-pure-pursuit-controller-1.3.13-np2py312hdd89193_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-util-1.3.13-np2py312h539b1ca_25.conda
+      - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-voxel-grid-1.3.13-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-orocos-kdl-vendor-0.5.2-np2py312hd11d946_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-osrf-pycommon-2.1.7-np2py312hdd89193_25.conda
       - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-pcl-conversions-2.6.5-np2py312ha02e5c6_25.conda
@@ -760,6 +788,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/win-64/yaml-0.2.5-h6a83c73_3.conda
       - conda: https://prefix.dev/conda-forge/win-64/yaml-cpp-0.8.0-h5112557_1.conda
       - conda: https://prefix.dev/conda-forge/win-64/yarl-1.25.1-py312h05f76fc_0.conda
+      - conda: https://prefix.dev/conda-forge/win-64/zeromq-4.3.5-h3a581c9_12.conda
       - conda: https://prefix.dev/conda-forge/win-64/zfp-1.0.1-h2f0f97f_6.conda
       - conda: https://prefix.dev/conda-forge/noarch/zipp-4.1.1-pyh5ded981_0.conda
       - conda: https://prefix.dev/conda-forge/win-64/zlib-1.3.2-hfd05255_3.conda
@@ -1508,6 +1537,19 @@ packages:
   - pkg:pypi/cppcheck?source=compressed-mapping
   size: 2462998
   timestamp: 1790418683325
+- conda: https://prefix.dev/conda-forge/win-64/cppzmq-4.11.0-h0000e93_0.conda
+  sha256: cc518834b6cb775bddbe60b27d5ad6c5f9fdee805146b071bb7a854f3cae8bf5
+  md5: 5a3728154ed1b8d7bdb6418087175f81
+  depends:
+  - ucrt >=10.0.20348.0
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - zeromq >=4.3.5,<4.3.6.0a0
+  license: MIT
+  license_family: MIT
+  purls: []
+  size: 30872
+  timestamp: 1763729089600
 - conda: https://prefix.dev/conda-forge/noarch/cpython-3.12.15-py312hd8ed1ab_1.conda
   noarch: generic
   sha256: b28acae0036186d119498434df780a0d8f20e1919317215c364d596a90c38fdd
@@ -3765,6 +3807,17 @@ packages:
   purls: []
   size: 5842935
   timestamp: 1790276318445
+- conda: https://prefix.dev/conda-forge/win-64/libsodium-1.0.22-h6a83c73_3.conda
+  sha256: 6ffc0f69a71a4b440414d32ae2960202c570431a4605069ad2762b5c04b45f16
+  md5: 44aa173fe5fec2e3ba2f884cf90253c6
+  depends:
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  license: ISC
+  purls: []
+  size: 280822
+  timestamp: 1789425326114
 - conda: https://prefix.dev/conda-forge/win-64/libspex-3.2.3-h2f847cc_7100102.conda
   sha256: d40ed44b94cdcc027691bf188a6734b45eeb18a9b58734e2e2976b4024422623
   md5: 8736b72696e63c678b5207064a9fe6f0
@@ -5244,6 +5297,55 @@ packages:
   - ros2-desktop ==0.11.0
   size: 1998
   timestamp: 1791507531366
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-behaviors-1.3.13-h9490d1a_25.conda
+  sha256: 7a4bbcdd0d8ce2b3200a536a0545b95cdd322f7407128aa19a8c389e95114a4b
+  md5: 2ff7da37da5f6a9f34cf28d5ce24f82f
+  depends:
+  - ros2-nav2-behaviors ==1.3.13
+  size: 2039
+  timestamp: 1791493411708
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-bt-navigator-1.3.13-h9490d1a_25.conda
+  sha256: ef00c021946982b69f4970cbf97966b840f39ee6c4aad08755252c96af4c459e
+  md5: 5ca02d9d7e76766bd3f275919cf7deb5
+  depends:
+  - ros2-nav2-bt-navigator ==1.3.13
+  size: 2050
+  timestamp: 1791493411265
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-controller-1.3.13-h9490d1a_25.conda
+  sha256: cd3e50c07d3633df300ba8183c4cbbc8b39291f926092b4b89e1c1a44d714954
+  md5: 227bfb9c57ad13b4dcb1a21d2f36fd08
+  depends:
+  - ros2-nav2-controller ==1.3.13
+  size: 2039
+  timestamp: 1791493410420
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-lifecycle-manager-1.3.13-h9490d1a_25.conda
+  sha256: 39cae84ec14bd46f4223eda8d6a7b5ebe31c5b5d8f5b233d8be252f69c237652
+  md5: d8367d54708b3890637f15239606ab9c
+  depends:
+  - ros2-nav2-lifecycle-manager ==1.3.13
+  size: 2071
+  timestamp: 1791481552944
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-navfn-planner-1.3.13-h9490d1a_25.conda
+  sha256: ddc6f58202e0f1b574452d1077bfac09f3a899c8bbc07679efd2d1e2cd2d214d
+  md5: d64f8120a8684f76ab271c2372b47625
+  depends:
+  - ros2-nav2-navfn-planner ==1.3.13
+  size: 2051
+  timestamp: 1791493409618
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-planner-1.3.13-h9490d1a_25.conda
+  sha256: 004d5194fe41b34afd537a8b158cf9c648b4e3d8f2c299a20af5e84f4267a543
+  md5: f51f5777d8851945e981c68e91aa7699
+  depends:
+  - ros2-nav2-planner ==1.3.13
+  size: 2018
+  timestamp: 1791493409226
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-nav2-regulated-pure-pursuit-controller-1.3.13-h9490d1a_25.conda
+  sha256: 5b8af139f7bdaac32420846dacaeba48cd5eb43f018b5c8a76eb659ffaf433e5
+  md5: c073a8b58e4ebfd7a1f91233ddfb123a
+  depends:
+  - ros2-nav2-regulated-pure-pursuit-controller ==1.3.13
+  size: 2152
+  timestamp: 1791493408821
 - conda: https://prefix.dev/robostack-jazzy/win-64/ros-jazzy-rmw-cyclonedds-cpp-2.2.4-h9490d1a_25.conda
   sha256: e1bad59bd41364b5b21c212a4248687c7f76a0fe38ea10b9a32ec3943dba09a3
   md5: de06229bd28a252055d0cd37d5382d85
@@ -6164,6 +6266,34 @@ packages:
   license: BSD-3-Clause
   size: 32018
   timestamp: 1791433374941
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-behaviortree-cpp-4.10.0-np2py312h27c1513_25.conda
+  sha256: b1119e016b80021e3c5f7872fd0d7f128e21ca7f74e2183cd945a071543a93e3
+  md5: a4f825a24802ec8fb15912361afc593e
+  depends:
+  - cppzmq
+  - libboost
+  - python
+  - ros2-ament-index-cpp
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-rclcpp
+  - ros2-ros-workspace
+  - ros2-tinyxml2-vendor
+  - sqlite
+  - tinyxml2
+  - zeromq
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - zeromq >=4.3.5,<4.3.6.0a0
+  - numpy >=1.25,<3
+  - libboost >=1.90.0,<1.91.0a0
+  - libsqlite >=3.53.4,<4.0a0
+  - tinyxml2 >=11.0.0,<11.1.0a0
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - python_abi 3.12.* *_cp312
+  license: MIT
+  size: 1935897
+  timestamp: 1791459804104
 - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-bond-4.2.0-np2py312hdd89193_25.conda
   sha256: 1ea6fb6217298be23348e42594768e27788339c44ca05937f0a7172e7b94f312
   md5: cbae1d94a0f95343a998f33715fa0b19
@@ -6545,6 +6675,26 @@ packages:
   license: Apache-2.0
   size: 201492
   timestamp: 1791456279557
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-diagnostic-updater-4.2.7-np2py312hdd89193_25.conda
+  sha256: 287c1aeb89549c5baf5d0986cd2fc5a4b397d2c8ac3f89ad70fcddf4874d4ec1
+  md5: d3e2842bded9eede0bca96e2f3541af9
+  depends:
+  - python
+  - ros2-diagnostic-msgs
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-rclcpp
+  - ros2-rclpy
+  - ros2-ros-workspace
+  - ros2-std-msgs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - numpy >=1.25,<3
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - python_abi 3.12.* *_cp312
+  license: BSD-3-Clause
+  size: 284273
+  timestamp: 1791461280088
 - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-distro-mutex-0.19.0-jazzy_25.conda
   sha256: 3191675dcd712b0028d6f037bdcd23ee5b9d276bd1e8900b1fa02e751680c8d8
   md5: 7533162be72338544095a056dff837a3
@@ -7037,6 +7187,26 @@ packages:
   license: Apache-2.0 OR Zlib
   size: 17564
   timestamp: 1791437150995
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-geographic-msgs-1.0.6-np2py312hdd89193_25.conda
+  sha256: db33bdebfc662db2ee65ea6d28b752f73a0f35bdb639f34306977be4284de0f3
+  md5: 3fa603cfdf9acce98d267f60dfcabcb3
+  depends:
+  - python
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-ros-workspace
+  - ros2-rosidl-default-runtime
+  - ros2-std-msgs
+  - ros2-unique-identifier-msgs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - python_abi 3.12.* *_cp312
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - numpy >=1.25,<3
+  license: BSD-3-Clause
+  size: 416095
+  timestamp: 1791456824565
 - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-geometry-msgs-5.3.8-np2py312hdd89193_25.conda
   sha256: 295fd3ad6e74ca8604e13effbdf5e66743ba3447c79f261d05e848ac3150b481
   md5: 17bdb9252b629e85d7ba1692b8f6206b
@@ -7745,6 +7915,50 @@ packages:
   license: BSD-3-Clause
   size: 96278
   timestamp: 1791460973613
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav-2d-msgs-1.3.13-np2py312hdd89193_25.conda
+  sha256: 3c10390e02a59bad917522872828e7256d027876ed2e37ab201827833d269d53
+  md5: c7057e7fec1bcd3a316a2b73c850d73a
+  depends:
+  - python
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-ros-workspace
+  - ros2-rosidl-default-generators
+  - ros2-rosidl-default-runtime
+  - ros2-std-msgs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - python_abi 3.12.* *_cp312
+  - numpy >=1.25,<3
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  license: BSD-3-Clause
+  size: 132860
+  timestamp: 1791457061960
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav-2d-utils-1.3.13-np2py312hdd89193_25.conda
+  sha256: af676e14f0abb5f80bae0a2f7cb8bf9d4e75fc6dfb59aafc92dadb65de5176d6
+  md5: 27fa42d802ccf25a7a02e00c3586f08f
+  depends:
+  - python
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-nav-2d-msgs
+  - ros2-nav-msgs
+  - ros2-nav2-msgs
+  - ros2-nav2-util
+  - ros2-ros-workspace
+  - ros2-std-msgs
+  - ros2-tf2
+  - ros2-tf2-geometry-msgs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - numpy >=1.25,<3
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - python_abi 3.12.* *_cp312
+  license: BSD-3-Clause
+  size: 99030
+  timestamp: 1791479289789
 - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav-msgs-5.3.8-np2py312hdd89193_25.conda
   sha256: 87a5e9399d35dd9af16d81c35bca210fdc8fc7a61b317424fac47d0ec8f36fdb
   md5: 0195c2a053e6757b356e9028aee49011
@@ -7765,6 +7979,394 @@ packages:
   license: Apache-2.0
   size: 326270
   timestamp: 1791456734985
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-behavior-tree-1.3.13-np2py312hdd89193_25.conda
+  sha256: ab26240f9a271f103d558a9c0f0205a9d4bd5af01948fdbdb5bccebc7a7eeb02
+  md5: f3fc3e2e682a02a1085170e2fbe1e5d5
+  depends:
+  - python
+  - ros2-behaviortree-cpp
+  - ros2-builtin-interfaces
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-lifecycle-msgs
+  - ros2-nav-msgs
+  - ros2-nav2-msgs
+  - ros2-nav2-util
+  - ros2-rclcpp
+  - ros2-rclcpp-action
+  - ros2-rclcpp-lifecycle
+  - ros2-ros-workspace
+  - ros2-sensor-msgs
+  - ros2-std-msgs
+  - ros2-std-srvs
+  - ros2-tf2
+  - ros2-tf2-geometry-msgs
+  - ros2-tf2-ros
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - numpy >=1.25,<3
+  - python_abi 3.12.* *_cp312
+  license: Apache-2.0
+  size: 12461577
+  timestamp: 1791478733612
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-behaviors-1.3.13-np2py312hdd89193_25.conda
+  sha256: 46fcd75b251f8f559272bb29eff9a7a470fb5f9f26e4e52cd09b47d3d8624dfb
+  md5: 1e6772e38857bd3c65559b15dcb3bb1d
+  depends:
+  - python
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-nav-msgs
+  - ros2-nav2-behavior-tree
+  - ros2-nav2-core
+  - ros2-nav2-costmap-2d
+  - ros2-nav2-msgs
+  - ros2-nav2-util
+  - ros2-pluginlib
+  - ros2-rclcpp
+  - ros2-rclcpp-action
+  - ros2-rclcpp-lifecycle
+  - ros2-ros-workspace
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - numpy >=1.25,<3
+  - python_abi 3.12.* *_cp312
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  license: Apache-2.0
+  size: 2942382
+  timestamp: 1791492855954
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-bt-navigator-1.3.13-np2py312hdd89193_25.conda
+  sha256: f4fec94a7de49e1a30048038e2191baa7a71d6a429516dffd1926dfc51c49ea8
+  md5: 89582306574f11327e72ec54b816554f
+  depends:
+  - python
+  - ros2-behaviortree-cpp
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-nav-msgs
+  - ros2-nav2-behavior-tree
+  - ros2-nav2-core
+  - ros2-nav2-msgs
+  - ros2-nav2-util
+  - ros2-pluginlib
+  - ros2-rclcpp
+  - ros2-rclcpp-action
+  - ros2-rclcpp-lifecycle
+  - ros2-ros-workspace
+  - ros2-std-msgs
+  - ros2-tf2-ros
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - numpy >=1.25,<3
+  - python_abi 3.12.* *_cp312
+  license: Apache-2.0
+  size: 2095910
+  timestamp: 1791492694244
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-common-1.3.13-np2py312hdd89193_25.conda
+  sha256: c140fca6d64983b502713e1b1b649ec50854c619f1b8f287813956a3dd4e5d7e
+  md5: 5a9092ab077b6976e32879273aacd1b8
+  depends:
+  - python
+  - pyyaml
+  - ros2-ament-cmake-core
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-launch
+  - ros2-launch-ros
+  - ros2-osrf-pycommon
+  - ros2-rclpy
+  - ros2-ros-workspace
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - python_abi 3.12.* *_cp312
+  - numpy >=1.25,<3
+  license: Apache-2.0
+  size: 46724
+  timestamp: 1791454270301
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-controller-1.3.13-np2py312hdd89193_25.conda
+  sha256: a183fd2bab245dadbdaf6af75f5345dc07450bab9e479ef69b6596fd261032c1
+  md5: 8dc65b172da132dcc77ae9283b51d3d6
+  depends:
+  - python
+  - ros2-angles
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-nav-2d-msgs
+  - ros2-nav-2d-utils
+  - ros2-nav2-core
+  - ros2-nav2-costmap-2d
+  - ros2-nav2-msgs
+  - ros2-nav2-util
+  - ros2-pluginlib
+  - ros2-rclcpp
+  - ros2-rclcpp-action
+  - ros2-ros-workspace
+  - ros2-std-msgs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - numpy >=1.25,<3
+  - python_abi 3.12.* *_cp312
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  license: Apache-2.0
+  size: 1493673
+  timestamp: 1791488717864
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-core-1.3.13-np2py312hdd89193_25.conda
+  sha256: 587d631211dd2cfbc4e13d962e9aab7b212fb8fa13430bfe2f171fa35e53144a
+  md5: c7f537604e6cf9da6167e151ac9ec63a
+  depends:
+  - python
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-nav-msgs
+  - ros2-nav2-behavior-tree
+  - ros2-nav2-costmap-2d
+  - ros2-nav2-util
+  - ros2-pluginlib
+  - ros2-rclcpp
+  - ros2-rclcpp-lifecycle
+  - ros2-ros-workspace
+  - ros2-std-msgs
+  - ros2-tf2-ros
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - numpy >=1.25,<3
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - python_abi 3.12.* *_cp312
+  license: Apache-2.0
+  size: 51264
+  timestamp: 1791484265658
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-costmap-2d-1.3.13-np2py312hdd89193_25.conda
+  sha256: 7242dec60c5ae0b0d1ce52c71a56edfc898e334137ab79910b29579d7fa43b13
+  md5: e9050f83ac8d7ed2415e7ec827646c80
+  depends:
+  - python
+  - ros2-angles
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-laser-geometry
+  - ros2-map-msgs
+  - ros2-message-filters
+  - ros2-nav-msgs
+  - ros2-nav2-msgs
+  - ros2-nav2-util
+  - ros2-nav2-voxel-grid
+  - ros2-pluginlib
+  - ros2-rclcpp
+  - ros2-rclcpp-lifecycle
+  - ros2-ros-workspace
+  - ros2-sensor-msgs
+  - ros2-std-msgs
+  - ros2-std-srvs
+  - ros2-tf2
+  - ros2-tf2-geometry-msgs
+  - ros2-tf2-ros
+  - ros2-tf2-sensor-msgs
+  - ros2-visualization-msgs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - numpy >=1.25,<3
+  - python_abi 3.12.* *_cp312
+  license: BSD-3-Clause OR Apache-2.0
+  size: 5252067
+  timestamp: 1791481973052
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-lifecycle-manager-1.3.13-np2py312hdd89193_25.conda
+  sha256: f79dce5bb6c09f8a405ea95585786792d5203c1560c811532472c55d15a1dc1a
+  md5: ce6d1ee81fde15a25f9c46e98e9a3688
+  depends:
+  - python
+  - ros2-bondcpp
+  - ros2-diagnostic-updater
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-lifecycle-msgs
+  - ros2-nav2-msgs
+  - ros2-nav2-util
+  - ros2-rclcpp-action
+  - ros2-rclcpp-lifecycle
+  - ros2-ros-workspace
+  - ros2-std-msgs
+  - ros2-std-srvs
+  - ros2-tf2-geometry-msgs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - python_abi 3.12.* *_cp312
+  - numpy >=1.25,<3
+  license: Apache-2.0
+  size: 365951
+  timestamp: 1791477441907
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-msgs-1.3.13-np2py312hdd89193_25.conda
+  sha256: 1f11ff36eb16b24c37cbd1b358e32f2c38c792f981ef77f211396fc896e2e342
+  md5: e2bb23dd0a543d9aff5b4ab4cd4131a4
+  depends:
+  - python
+  - ros2-action-msgs
+  - ros2-builtin-interfaces
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geographic-msgs
+  - ros2-geometry-msgs
+  - ros2-nav-msgs
+  - ros2-rclcpp
+  - ros2-ros-workspace
+  - ros2-rosidl-default-generators
+  - ros2-std-msgs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - numpy >=1.25,<3
+  - python_abi 3.12.* *_cp312
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  license: Apache-2.0
+  size: 3624621
+  timestamp: 1791459154362
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-navfn-planner-1.3.13-np2py312hdd89193_25.conda
+  sha256: 95f05f66099d482b81ea9d51b50284037fe7930d57a6571ed76fe09dbb035fc7
+  md5: e4539308e127f6e654f8068999c48aab
+  depends:
+  - python
+  - ros2-builtin-interfaces
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-nav-msgs
+  - ros2-nav2-common
+  - ros2-nav2-core
+  - ros2-nav2-costmap-2d
+  - ros2-nav2-msgs
+  - ros2-nav2-util
+  - ros2-pluginlib
+  - ros2-rclcpp
+  - ros2-rclcpp-action
+  - ros2-rclcpp-lifecycle
+  - ros2-ros-workspace
+  - ros2-tf2-ros
+  - ros2-visualization-msgs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - numpy >=1.25,<3
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - python_abi 3.12.* *_cp312
+  license: Apache-2.0 OR BSD-3-Clause
+  size: 154304
+  timestamp: 1791492113471
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-planner-1.3.13-np2py312hdd89193_25.conda
+  sha256: e93d0b7fdbee82ac7882c59e378df1dd82515ec17c017a1f0534d1ae85522d90
+  md5: 930d53f9f6aebd23dc3e4b788c0ccb64
+  depends:
+  - python
+  - ros2-builtin-interfaces
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-nav-msgs
+  - ros2-nav2-common
+  - ros2-nav2-core
+  - ros2-nav2-costmap-2d
+  - ros2-nav2-msgs
+  - ros2-nav2-util
+  - ros2-pluginlib
+  - ros2-rclcpp
+  - ros2-rclcpp-action
+  - ros2-rclcpp-lifecycle
+  - ros2-ros-workspace
+  - ros2-tf2-ros
+  - ros2-visualization-msgs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - python_abi 3.12.* *_cp312
+  - numpy >=1.25,<3
+  license: Apache-2.0
+  size: 725630
+  timestamp: 1791491968612
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-regulated-pure-pursuit-controller-1.3.13-np2py312hdd89193_25.conda
+  sha256: 47082cfe6c211863438af198ed1621f202a98c9c0f8c0cf411b2a863efafc16d
+  md5: ac8d0a1235fdb28b696a29eef234c65c
+  depends:
+  - python
+  - ros2-angles
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-nav2-common
+  - ros2-nav2-core
+  - ros2-nav2-costmap-2d
+  - ros2-nav2-msgs
+  - ros2-nav2-util
+  - ros2-pluginlib
+  - ros2-rclcpp
+  - ros2-ros-workspace
+  - ros2-tf2
+  - ros2-tf2-geometry-msgs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - numpy >=1.25,<3
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - python_abi 3.12.* *_cp312
+  license: Apache-2.0
+  size: 393664
+  timestamp: 1791490596054
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-util-1.3.13-np2py312h539b1ca_25.conda
+  sha256: a643c5118c184ff7324e68e3a0c6ee350cc64adfed30c3996d92158cbabadef7
+  md5: fa8a8fefb0de8b8ba201b4155823e27b
+  depends:
+  - python
+  - ros2-bond
+  - ros2-bondcpp
+  - ros2-builtin-interfaces
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-geometry-msgs
+  - ros2-lifecycle-msgs
+  - ros2-nav-msgs
+  - ros2-nav2-common
+  - ros2-nav2-msgs
+  - ros2-rcl-interfaces
+  - ros2-rclcpp
+  - ros2-rclcpp-action
+  - ros2-rclcpp-lifecycle
+  - ros2-ros-workspace
+  - ros2-std-msgs
+  - ros2-tf2
+  - ros2-tf2-geometry-msgs
+  - ros2-tf2-msgs
+  - ros2-tf2-ros
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - libboost >=1.90.0,<1.91.0a0
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  - numpy >=1.25,<3
+  - python_abi 3.12.* *_cp312
+  license: Apache-2.0 OR BSD-3-Clause
+  size: 730907
+  timestamp: 1791472386375
+- conda: https://prefix.dev/robostack-jazzy/win-64/ros2-nav2-voxel-grid-1.3.13-np2py312hdd89193_25.conda
+  sha256: 896694f820c944907de621d3ea3f8462f354397af52342069159ed0923cb1bc4
+  md5: 40a9ec4a3aa9dabda12e72abc85c6d6c
+  depends:
+  - python
+  - ros2-distro-mutex 0.19.* jazzy_*
+  - ros2-rclcpp
+  - ros2-ros-workspace
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - numpy >=1.25,<3
+  - python_abi 3.12.* *_cp312
+  - ros2-distro-mutex >=0.19.0,<0.20.0a0
+  license: BSD-3-Clause
+  size: 61877
+  timestamp: 1791459738221
 - conda: https://prefix.dev/robostack-jazzy/win-64/ros2-orocos-kdl-vendor-0.5.2-np2py312hd11d946_25.conda
   sha256: d7ad4cd5f811b8600d83c01052f6cae94826b562b213b00665422e47f84f48ce
   md5: f658d3204f0d6e07b21a1678a19d8ba8
@@ -12397,6 +12999,20 @@ packages:
   - pkg:pypi/yarl?source=compressed-mapping
   size: 179409
   timestamp: 1791286114277
+- conda: https://prefix.dev/conda-forge/win-64/zeromq-4.3.5-h3a581c9_12.conda
+  sha256: 77666f68961acb86b985645734dcf7827355cf22a7f9236838e1a6e07bf06124
+  md5: fc0bef11265f13c4acd2ab4a7432d5ab
+  depends:
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - krb5 >=1.22.2,<1.23.0a0
+  - libsodium >=1.0.22,<1.0.23.0a0
+  license: MPL-2.0
+  license_family: MOZILLA
+  purls: []
+  size: 265930
+  timestamp: 1789076564779
 - conda: https://prefix.dev/conda-forge/win-64/zfp-1.0.1-h2f0f97f_6.conda
   sha256: f3b4993f38fb149ce1b05e44cc1e1ca9e95e6088cadf196e62cbc3fda33f4f61
   md5: 5f9fb5a09092f07e87a1f4b135f1888a

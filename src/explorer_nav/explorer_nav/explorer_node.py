@@ -175,6 +175,10 @@ class Explorer(Node):
         )
         self._map_frame = self._parameter('map_frame', 'map', 'Frame of the map')
         self._base_frame = self._parameter('base_frame', 'base_link', 'Frame of the robot')
+        self._use_nav2 = self._parameter(
+            'use_nav2', False,
+            'Leave planning the path and driving to Nav2: every target is sent to its '
+            'navigate_to_pose action. This node then only decides where to go')
 
         # ---- Shared state, and the lock that guards it ----
         # This node runs on several threads at once (see main, and the callback groups
@@ -186,7 +190,13 @@ class Explorer(Node):
         # callback must not wait for it.
         self._lock = threading.Lock()
         self._job: Job | None = None
-        self._follower = PurePursuit(follower_config)
+        if self._use_nav2:
+            # Imported here and not at the top: the demo without Nav2 then runs without
+            # Nav2's message package being installed.
+            from explorer_nav.nav2_driver import Nav2Driver
+            self._follower = Nav2Driver(self, follower_config, self._map_frame)
+        else:
+            self._follower = PurePursuit(follower_config)
         self._map_data: np.ndarray | None = None
         self._map_geometry: GridGeometry | None = None
         self._explored_area = 0.0
@@ -258,6 +268,8 @@ class Explorer(Node):
         self._status_timer = self.create_timer(0.5, self._publish_status)
 
         self.get_logger().info('Explorer ready: send an Explore goal, or click a goal pose')
+        if self._use_nav2:
+            self.get_logger().info('Nav2 plans and drives. This node picks the targets')
 
     def _parameter(self, name: str, default, description: str):
         """Declare a parameter with a description and return its value.
@@ -487,6 +499,8 @@ class Explorer(Node):
                     job.path_done = True
             if not driving:
                 self._last_pose = None
+        if self._use_nav2:
+            return      # Nav2's controller sends the commands, on the same topic
         if driving:
             self._cmd_publisher.publish(command)
             self._was_driving = True
@@ -524,7 +538,12 @@ class Explorer(Node):
         if job.home is None:
             job.home = pose
 
-        stuck = self._is_stuck(job, pose, now, has_path)
+        if self._use_nav2:
+            # Nav2 watches the robot's progress itself. When it stops moving, Nav2 clears
+            # its costmaps, spins, waits and backs up, and only then gives the goal up.
+            stuck = self._follower.take_failure()
+        else:
+            stuck = self._is_stuck(job, pose, now, has_path)
         if state == ExplorationStatus.EXPLORING:
             self._explore_step(job, target, pose, data, geometry, now, path_done, stuck)
         else:
@@ -825,6 +844,8 @@ class Explorer(Node):
 
     def _publish_plan(self, points: list[tuple[float, float]]) -> None:
         """Publish the path for display. An empty list erases the old one."""
+        if self._use_nav2 and points:
+            return      # Nav2's planner publishes the path it follows, on this same topic
         path = Path()
         path.header.frame_id = self._map_frame
         path.header.stamp = self.get_clock().now().to_msg()

@@ -34,7 +34,12 @@ slam_toolbox:
     min_laser_range: 0.0
     max_laser_range: 8.0         # changed from 20.0 m: the lidar_range of the simulator
     minimum_time_interval: 0.2   # changed from 0.5 s: at 0.6 m/s the robot is 30 cm on in half a second
-    transform_timeout: 0.2
+    transform_timeout: 0.3       # changed from 0.2 s. slam_toolbox stamps map -> odom this far into the
+                                 # future, so that a node asking where the robot is NOW gets an answer
+                                 # although the newest scan is some milliseconds old. It is a bet that
+                                 # the correction still holds by then. With a drifting odometry it does
+                                 # not hold for long, so this stays small, and whoever asks also waits
+                                 # a little (transform_tolerance in nav2.yaml).
     tf_buffer_duration: 30.0
     stack_size_to_use: 40000000
     enable_interactive_mode: false   # changed: only needed for the RViz plugin that moves nodes by hand

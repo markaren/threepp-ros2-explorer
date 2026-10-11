@@ -64,6 +64,15 @@ ros-jazzy-vision-msgs = "*"
 # added for this demo: a real SLAM system, to put in the place of our own mapper
 # (ros2 launch explorer_bringup demo.launch.py mapper:=slam_toolbox)
 ros-jazzy-slam-toolbox = "*"
+# added for this demo: the parts of Nav2 that can take over planning and driving
+# (ros2 launch explorer_bringup demo.launch.py navigation:=nav2)
+ros-jazzy-nav2-planner = "*"
+ros-jazzy-nav2-navfn-planner = "*"
+ros-jazzy-nav2-controller = "*"
+ros-jazzy-nav2-regulated-pure-pursuit-controller = "*"
+ros-jazzy-nav2-behaviors = "*"
+ros-jazzy-nav2-bt-navigator = "*"
+ros-jazzy-nav2-lifecycle-manager = "*"
 numpy = "*"
 
 # added for this demo: threepp for Python comes from PyPI, like any pip package.

@@ -20,6 +20,7 @@ The algorithms and the ROS code are kept apart on purpose.
 | `explorer_nav/frontiers.py` | no | Frontier cells and their clusters |
 | `explorer_nav/planner.py` | no | Costmap, distance field (Dijkstra), path extraction |
 | `explorer_nav/pure_pursuit.py` | no | Path follower |
+| `explorer_nav/nav2_driver.py` | yes | Stands in for the path follower with `use_nav2`: sends the target to Nav2 |
 | `explorer_nav/mapper_node.py` | yes | Node `mapper`: topics, tf2, a service, parameters |
 | `explorer_nav/explorer_node.py` | yes | Node `explorer`: the action, threads, the state machine |
 | `test/test_*.py` | no | Unit tests of the four algorithm modules |

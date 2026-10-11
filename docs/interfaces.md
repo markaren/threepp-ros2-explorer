@@ -16,6 +16,7 @@ namespace later (`/robot1/scan`, `/robot2/scan`) without touching the code.
 | `safety_monitor` | `explorer_safety` | C++ | Reflex layer: stops forward motion when something is too close |
 | `mapper` | `explorer_nav` | Python / numpy | Turns laser scans into an occupancy grid |
 | `slam_toolbox` | `slam_toolbox` (not ours) | C++ | Takes the mapper's place with `mapper:=slam_toolbox`: builds the map and corrects the odometry |
+| `planner_server`, `controller_server`, `behavior_server`, `bt_navigator` | Nav2 (not ours) | C++ | With `navigation:=nav2`: plan the path, follow it, recover when stuck. The explorer then only picks the targets |
 | `explorer` | `explorer_nav` | Python / numpy | Picks frontiers, plans paths, follows them |
 | `cone_spotter` | `explorer_vision` | Python / OpenCV | Finds traffic cones in the camera image and places them on the map |
 | `dashboard` | `explorer_dashboard` | Python / threepp | The operator's 3D view of what the robot *believes*, and the buttons |
@@ -56,11 +57,11 @@ threepp y.
 | `cones` | `visualization_msgs/MarkerArray` | `cone_spotter` | `dashboard`, RViz | 2 Hz | reliable, transient local, depth 1 |
 | `camera/annotated/compressed` | `sensor_msgs/CompressedImage` (`jpeg`) | `cone_spotter` | `dashboard`, `rqt_image_view` | per image | sensor data |
 | `ground_truth` | `geometry_msgs/PoseStamped` | `sim` | for comparing against `odom` | 30 Hz | reliable, depth 10 |
-| `cmd_vel_nav` | `geometry_msgs/Twist` | `explorer` | `safety_monitor` | 20 Hz | reliable, depth 10 |
+| `cmd_vel_nav` | `geometry_msgs/Twist` | `explorer` (with Nav2: `controller_server`, `behavior_server`) | `safety_monitor` | 20 Hz | reliable, depth 10 |
 | `cmd_vel` | `geometry_msgs/Twist` | `safety_monitor` | `sim` | 20 Hz | reliable, depth 10 |
 | `safety_stop` | `std_msgs/Bool` | `safety_monitor` | `dashboard` | on change | reliable, transient local, depth 1 |
 | `map` | `nav_msgs/OccupancyGrid` | `mapper` (or `slam_toolbox`) | `explorer`, `dashboard`, RViz | 2 Hz (1 Hz) | reliable, transient local, depth 1 |
-| `plan` | `nav_msgs/Path` | `explorer` | `dashboard`, RViz | on replan | reliable, depth 1 |
+| `plan` | `nav_msgs/Path` | `explorer` (with Nav2: `planner_server`) | `dashboard`, RViz | on replan | reliable, depth 1 |
 | `frontiers` | `visualization_msgs/MarkerArray` | `explorer` | `dashboard`, RViz | on replan | reliable, depth 1 |
 | `exploration_status` | `explorer_interfaces/ExplorationStatus` | `explorer` | `dashboard` | 2 Hz | reliable, depth 10 |
 | `goal_pose` | `geometry_msgs/PoseStamped` | `dashboard`, RViz "2D Goal Pose" | `explorer` | on click | reliable, depth 1 |
@@ -124,6 +125,12 @@ wants progress reports while it runs, and must be able to cancel it.
 * **Feedback**: an `ExplorationStatus`, about twice a second.
 * **Result**: `success`, `message`, `explored_area` (m²), `distance` (m), `duration` (s).
 * **Cancel**: accepted at any time. The robot stops.
+
+With `navigation:=nav2` there is a second action, `navigate_to_pose`
+(`nav2_msgs/action/NavigateToPose`), served by Nav2's `bt_navigator`. The explorer is its
+only client: one goal per target, replaced by the next one while the robot drives. Nav2
+also brings topics of its own, of which the RViz layout shows `global_costmap/costmap`,
+`local_costmap/costmap`, `local_costmap/published_footprint` and `lookahead_point`.
 
 ## Parameters that change behaviour while running
 

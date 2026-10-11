@@ -180,6 +180,10 @@ Same package.
   (nearest by path, not by straight line) and, followed downhill, is the path.
 * **Pure pursuit.** Aim at a point a fixed distance ahead on the path. Turn on the spot
   first if it is far off to the side.
+* **Or Nav2.** With `navigation:=nav2` the last two points are Nav2's job. The explorer
+  keeps its distance field to rank the frontiers, sends the winner to Nav2's
+  `navigate_to_pose` action, and waits for "reached" or "gave up". The seam is small on
+  purpose: `nav2_driver.py` offers the same four methods as the path follower.
 * **An action.** `explore` runs for minutes, reports progress and can be cancelled: the
   three things a service cannot do. The action's execute callback blocks in a loop, so
   the node uses a `MultiThreadedExecutor`, and a lock around the state the callbacks share.

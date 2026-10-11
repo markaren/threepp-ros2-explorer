@@ -58,7 +58,8 @@ pixi run -e jazzy build --packages-select explorer_sim
 # No exploring until you press E in the dashboard
 pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py auto_explore:=false
 
-# With RViz next to it, to see the same topics in the standard tool
+# With RViz next to it, to see the same topics in the standard tool. Works with every
+# combination of the arguments below, and opens the layout that fits
 pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py rviz:=true
 
 # Only the robot and its safety reflex. Drive it yourself from a second terminal:
@@ -68,8 +69,9 @@ pixi run -e jazzy ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-arg
 # On a laptop without a real graphics card: no ambient occlusion, bloom or reflections
 pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py effects:=false
 
-# With a standard SLAM package in the place of our own mapper (see "Our node, or the package")
+# With standard packages in the place of our own nodes (see "Our node, or the package")
 pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py mapper:=slam_toolbox
+pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py navigation:=nav2
 ```
 
 `ros2 launch explorer_bringup demo.launch.py --show-args` lists every argument.
@@ -173,14 +175,15 @@ page alone, and worked together on the first run.
 | Custom message, service, action | [`explorer_interfaces`](src/explorer_interfaces): three small files, each explains itself |
 | Service server and client | `sim_node.cpp` (`spawn_obstacle`), [`dashboard_node.py`](src/explorer_dashboard/explorer_dashboard/dashboard_node.py) (`reset_world`) |
 | Action server (goal, feedback, result, cancel) | [`explorer_node.py`](src/explorer_nav/explorer_nav/explorer_node.py) |
-| Action client | `dashboard_node.py` |
+| Action client | `dashboard_node.py`, and [`nav2_driver.py`](src/explorer_nav/explorer_nav/nav2_driver.py): a client of somebody else's action |
+| Lifecycle nodes, and who brings them to life | [`demo.launch.py`](src/explorer_bringup/launch/demo.launch.py): slam_toolbox's own launch file does it for slam_toolbox, a lifecycle manager for Nav2 |
 | Parameters, and changing one while the node runs | `sim_node.cpp` (`lidar_noise`), [`explorer.yaml`](src/explorer_bringup/config/explorer.yaml) |
 | tf2: publishing frames | `sim_node.cpp` (`odom -> base_link`, the sensor mounts) |
 | tf2: asking "where was the robot at time t?" | `mapper_node.py`, [`cone_spotter_node.py`](src/explorer_vision/explorer_vision/cone_spotter_node.py) |
 | Time stamps that mean "when it was measured" | [`window.cpp`](src/explorer_sim/src/window.cpp) (one stamp for scan and image), `cone_spotter_node.py` (pairing by stamp) |
 | Executors and callback groups | `explorer_node.py` (multi-threaded), `safety_monitor.cpp` (why it locks anyway) |
 | Launch files, arguments, including one in another | [`demo.launch.py`](src/explorer_bringup/launch/demo.launch.py), [`sim.launch.py`](src/explorer_bringup/launch/sim.launch.py) |
-| Remapping a topic | the teleop command above |
+| Remapping a topic | the teleop command above, and the three that fit Nav2 into the graph in `demo.launch.py` |
 | A package that only installs files | [`explorer_bringup`](src/explorer_bringup/CMakeLists.txt) |
 | Installing data files and finding them at run time | `explorer_sim/CMakeLists.txt`, `sim_node.cpp` (the ament index) |
 
@@ -266,17 +269,33 @@ Start the demo, open a second terminal in this folder, and enter the environment
 
 The nodes of the robot's brain are written from scratch here, so that each one fits on
 a few pages and can be read. Real projects take them from packages. Because the nodes
-talk through the standard message types, one can be swapped for the other, and one such
-swap is built in:
+talk through the standard message types, one can be swapped for the other. Two swaps
+are built in as launch arguments, and they can be combined:
+
+| Argument | Ours, the default | The package |
+|---|---|---|
+| `mapper:=slam_toolbox` | [`mapper_node.py`](src/explorer_nav/explorer_nav/mapper_node.py): a map, drawn where the odometry says the robot is | [slam_toolbox](https://github.com/SteveMacenski/slam_toolbox): a map, and the odometry corrected against it |
+| `navigation:=nav2` | [`planner.py`](src/explorer_nav/explorer_nav/planner.py) and [`pure_pursuit.py`](src/explorer_nav/explorer_nav/pure_pursuit.py), inside the explorer | [Nav2](https://docs.nav2.org): a planner, a controller, recovery behaviours, and the behaviour tree that runs them |
 
 ```powershell
 pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py mapper:=slam_toolbox
+pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py navigation:=nav2
+pixi run -e jazzy ros2 launch explorer_bringup demo.launch.py mapper:=slam_toolbox navigation:=nav2 rviz:=true
 ```
 
-starts [slam_toolbox](https://github.com/SteveMacenski/slam_toolbox) instead of
-[`mapper_node.py`](src/explorer_nav/explorer_nav/mapper_node.py). It reads the same `scan`
-and tf, and publishes the same `map` and the transform `map -> odom`. The explorer, the
-cone spotter and the dashboard do not know which of the two is running.
+Ours in every combination: the simulator, the safety monitor (every velocity command
+still passes through it), the cone spotter, the dashboard, and the choice of which
+frontier to explore next.
+
+`rviz:=true` opens RViz next to the dashboard, with a layout for what is running: the
+map, the scan, the plan, the frontiers, the cones and the frames. With Nav2 it also shows
+the two costmaps, the robot's footprint and the controller's carrot.
+
+### The mapper
+
+slam_toolbox reads the same `scan` and tf as our mapper, and publishes the same `map`
+and the transform `map -> odom`. The explorer, the cone spotter and the dashboard do not
+know which of the two is running.
 
 With exact odometry the two do the same job (slam_toolbox: 338 m2 in 4.6 minutes). The
 difference shows when the odometry lies. One full run each with `odom_drift` at 1.0, the
@@ -293,16 +312,58 @@ Our mapper trusts the odometry and draws every scan where the odometry says the 
 is. slam_toolbox compares each scan with the map it has, and moves `map -> odom` until
 they agree.
 
-What the swap took, and it is worth reading:
+### Planning and driving
 
-* [`config/slam_toolbox.yaml`](src/explorer_bringup/config/slam_toolbox.yaml): nine values
-  differ from the package's defaults, and each line says why. One of them was found the
-  hard way. With the default `min_pass_through`, slam_toolbox's first map is a small disc
-  with unknown all around it, our explorer finds no place worth driving to, slam_toolbox
-  adds no scan until the robot has moved, and the run is over after three seconds.
-* The dashboard had assumed that a map never changes its size. slam_toolbox's map grows
-  with what the robot has seen, so the dashboard now frames the map again when it grows.
-* Still missing: `R` resets the simulator, but not slam_toolbox's map
+With `navigation:=nav2` the explorer still picks the frontier. Then it sends it to Nav2,
+as a goal of Nav2's `navigate_to_pose` action, instead of planning a path and following
+it. Nav2 plans the path (NavFn: a wave over a costmap, like our `planner.py`), follows it
+(Regulated Pure Pursuit: the algorithm of our `pure_pursuit.py`, with rules added), and
+when the robot stops making progress it clears its costmaps, spins, waits and backs up
+before it gives the goal up.
+
+In the explorer the swap is one class.
+[`nav2_driver.py`](src/explorer_nav/explorer_nav/nav2_driver.py) has the four methods of
+`PurePursuit` that the explorer calls, with an action client inside.
+
+Full runs, the whole building and back to the start:
+
+| | Explored | Cones | Time |
+|---|---|---|---|
+| Ours, two runs | 340 and 342 m2 | 6 and 5 of 6 | 257 and 176 s |
+| Nav2, two runs | 341 and 343 m2 | 6 and 6 of 6 | 211 and 201 s |
+| slam_toolbox and Nav2, `odom_drift` at 1.0, one run | 339 m2 | 6 of 6 | 276 s |
+
+Both do the job. Two runs of the same setup differ by more than the two setups do, so
+this table does not say which one is faster. In the last row the position error was
+0.05 m on average and 0.16 m at worst.
+
+### What the swaps took
+
+They were not free, and the list is worth reading. Every item was found by running it.
+
+* **slam_toolbox's first map.**
+  [`slam_toolbox.yaml`](src/explorer_bringup/config/slam_toolbox.yaml) differs from the
+  package's defaults in ten values, each with its reason on the line. With the default
+  `min_pass_through`, the first map is a small disc with unknown all around it, our
+  explorer finds no place worth driving to, slam_toolbox adds no scan until the robot
+  has moved, and the run is over after three seconds.
+* **A map that grows.** The dashboard had assumed that a map never changes its size. It
+  now frames the map again when it grows.
+* **Who is ready first.** Nav2's action server answers before Nav2 is active, and turns
+  every goal down for a second or two. The first version of `nav2_driver.py` took each
+  refusal for a blocked path. The explorer gave up on every frontier it had within one
+  second, and reported the building explored.
+* **What "now" means.** Nav2's controller asks tf where the robot is now. slam_toolbox
+  publishes `map -> odom` with a time stamp slightly in the future to make that
+  possible, but handles no scan while it redraws its map. With both packages on their
+  defaults the controller found no pose 42 times in one run, and Nav2 gave its goal up
+  each time. Two numbers fix it, `transform_timeout` in `slam_toolbox.yaml` and
+  `transform_tolerance` in [`nav2.yaml`](src/explorer_bringup/config/nav2.yaml), and
+  the comments there say what each one costs.
+* **Three remappings** in [`demo.launch.py`](src/explorer_bringup/launch/demo.launch.py)
+  fit Nav2 into the graph: its commands go to `cmd_vel_nav`, through our safety monitor,
+  and it does not listen to `goal_pose` itself.
+* **Still missing:** `R` resets the simulator, but not slam_toolbox's map
   ([exercise 14](docs/exercises.md)).
 
 ## What this is not
@@ -312,6 +373,8 @@ It is a teaching demo, and it cuts the corners that would hide the ideas:
 * **No SLAM by default.** The robot trusts its odometry, which the simulator makes
   perfect by default. Exercise 3 above shows what that hides, and `mapper:=slam_toolbox`
   what a SLAM system does about it.
+* **No frontier explorer from a package.** Where to go next stays ours with Nav2 too:
+  there is no released one for ROS 2 Jazzy to put in its place.
 * **No physics engine.** The robot is a disc that cannot enter boxes. Enough for a lidar
   and a map, and it keeps the simulator's only dependency threepp.
 * **Nobody plans for the camera.** The explorer goes where the lidar has not seen yet.

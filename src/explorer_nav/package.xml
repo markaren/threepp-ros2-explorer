@@ -16,6 +16,8 @@
   <exec_depend>std_srvs</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>explorer_interfaces</exec_depend>
+  <!-- Only for use_nav2 (navigation:=nav2): the type of Nav2's navigate_to_pose action -->
+  <exec_depend>nav2_msgs</exec_depend>
 
   <test_depend>python3-pytest</test_depend>
 
