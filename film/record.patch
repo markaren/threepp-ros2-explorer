@@ -1,0 +1,270 @@
+diff --git a/src/explorer_bringup/config/explorer.yaml b/src/explorer_bringup/config/explorer.yaml
+index 2d93278..e1581fa 100644
+--- a/src/explorer_bringup/config/explorer.yaml
++++ b/src/explorer_bringup/config/explorer.yaml
+@@ -14,8 +14,8 @@
+ 
+ sim:
+   ros__parameters:
+-    width: 1280            # the simulator window, in pixels. Smaller is faster
+-    height: 720
++    width: 1920            # the simulator window, in pixels. Smaller is faster
++    height: 1080
+     sensor_rate: 10.0      # lidar scans and camera frames per second
+     odom_rate: 30.0        # odometry and tf samples per second
+     lidar_beams: 360
+@@ -66,6 +66,6 @@ cone_spotter:
+ 
+ dashboard:
+   ros__parameters:
+-    width: 1280
+-    height: 720
++    width: 1920
++    height: 1080
+     return_home: true      # drive back to the start when the exploration is finished
+diff --git a/src/explorer_dashboard/explorer_dashboard/window.py b/src/explorer_dashboard/explorer_dashboard/window.py
+index 69725e2..0e42375 100644
+--- a/src/explorer_dashboard/explorer_dashboard/window.py
++++ b/src/explorer_dashboard/explorer_dashboard/window.py
+@@ -54,6 +54,24 @@ class DashboardWindow:
+ 
+         self.follow = False
+         self._key_was_down = {key: False for key in KEYS}
++
++        # FILM RECORDING (a local patch, not part of the demo)
++        import os
++        import subprocess
++        self._record_dir = os.environ.get('EXPLORER_RECORD_DIR', '')
++        self._record_pipe = None
++        self._record_frame = 0
++        self._record_count = 0
++        if self._record_dir:
++            os.makedirs(self._record_dir, exist_ok=True)
++            w, h = self._canvas.size()
++            self._record_pipe = subprocess.Popen(
++                ['ffmpeg', '-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24',
++                 '-s', f'{w}x{h}', '-framerate', '20', '-i', '-', '-c:v', 'libx264',
++                 '-preset', 'ultrafast', '-crf', '14', '-g', '20', '-pix_fmt', 'yuv420p',
++                 os.path.join(self._record_dir, 'dash.mp4')], stdin=subprocess.PIPE)
++            self._record_index = open(os.path.join(self._record_dir, 'dash_frames.csv'), 'w')
++            self._record_index.write('index,unix_time\n')
+         self._canvas.on_window_resize(self._on_resize)
+ 
+     def look_at_area(self, centre_x: float, centre_y: float, width: float) -> None:
+@@ -137,6 +155,20 @@ class DashboardWindow:
+         self._renderer.render(self.world.scene, self._camera)
+         self._renderer.auto_clear = False   # keep the 3D picture, draw over it
+         self._renderer.render(self.hud.scene, self.hud.camera)
++        if self._record_pipe is not None:
++            import os
++            if self._record_frame % 3 == 0:
++                self._record_pipe.stdin.write(self._renderer.read_pixels().tobytes())
++                self._record_index.write(f'{self._record_count},{time.time():.4f}\n')
++                self._record_count += 1
++            self._record_frame += 1
++            if self._record_frame % 60 == 0:
++                self._record_index.flush()
++                if os.path.exists(os.path.join(self._record_dir, 'stop')):
++                    self._record_pipe.stdin.close()
++                    self._record_pipe.wait()
++                    self._record_pipe = None
++                    self._record_index.close()
+ 
+     def next_frame(self, frame: Callable[[], None]) -> bool:
+         """Run `frame` once, show the result, and return False when the window closed.
+diff --git a/src/explorer_sim/src/window.cpp b/src/explorer_sim/src/window.cpp
+index 8182e63..d9b33bd 100644
+--- a/src/explorer_sim/src/window.cpp
++++ b/src/explorer_sim/src/window.cpp
+@@ -13,6 +13,12 @@
+ // render and OpenGL is thread-affine.
+ 
+ #include "overlay.hpp"
++
++#include <array>
++#include <cstdio>
++#include <cstdlib>
++#include <fstream>
++#include <iomanip>
+ #include "simulator_impl.hpp"
+ 
+ namespace explorer_sim {
+@@ -204,6 +210,60 @@ namespace explorer_sim {
+         int tickCount = 0;
+         Pose2D lastFollowed;
+ 
++        // ---- FILM RECORDING (a local patch, not part of the demo) --------------------------
++        const char* recordEnv = std::getenv("EXPLORER_RECORD_DIR");
++        const std::string recordDir = recordEnv ? recordEnv : "";
++        FILE* chasePipe = nullptr;
++        FILE* overPipe = nullptr;
++        std::ofstream recordIndex;
++        std::vector<unsigned char> recordPixels;
++        long recordFrame = 0;
++        int recordChaseCount = 0;
++        int recordOverCount = 0;
++        const auto recordSize = canvas.size();
++        Vector3 recordLook;
++        // REPLAY: the robot's pose for every frame, from a file.
++        std::vector<std::array<double, 5>> replayTrack;
++        if (const char* replayEnv = std::getenv("EXPLORER_REPLAY")) {
++            std::ifstream trackFile(replayEnv);
++            std::array<double, 5> row{};
++            while (trackFile >> row[0] >> row[1] >> row[2] >> row[3] >> row[4]) replayTrack.push_back(row);
++        }
++        const bool replaying = !replayTrack.empty();
++        size_t replayFrame = 0;
++        FILE* eyePipe = nullptr;
++        int recordEyeCount = 0;
++        auto openPipe = [&](const std::string& name, int fps) {
++            const std::string command = "ffmpeg -loglevel error -y -f rawvideo -pix_fmt rgb24 -s " +
++                                        std::to_string(recordSize.width()) + "x" + std::to_string(recordSize.height()) +
++                                        " -framerate " + std::to_string(fps) +
++                                        " -i - -vf vflip -c:v libx264 -preset " + std::string(replaying ? "veryfast" : "ultrafast") + " -crf 14 -g 30 -pix_fmt yuv420p \"" +
++                                        recordDir + "/" + name + "\"";
++            return _popen(command.c_str(), "wb");
++        };
++        if (!recordDir.empty()) {
++            std::filesystem::create_directories(recordDir);
++            chasePipe = openPipe("sim_chase.mp4", 30);
++            overPipe = openPipe("sim_over.mp4", replaying ? 30 : 15);
++            if (replaying) eyePipe = openPipe("sim_eye.mp4", 30);
++            recordIndex.open(recordDir + "/sim_frames.csv");
++            recordIndex << "stream,index,unix_time,x,y,yaw,cam_x,cam_y,cam_z,look_x,look_y,look_z\n";
++            recordPixels.resize(static_cast<size_t>(recordSize.width()) * recordSize.height() * 3);
++            sim.lidarRays->visible = false;
++            // The beams are a faint haze in the window. For the film's overview they are
++            // drawn stronger, so the fan of rays can be seen from across the building.
++            if (replaying) sim.lidarRays->material()->opacity = 0.22f;
++        }
++        auto grab = [&](FILE* pipe, const char* stream, int index) {
++            renderer.readPixels(Vector2(0, 0), {recordSize.width(), recordSize.height()}, Format::RGB, recordPixels.data());
++            fwrite(recordPixels.data(), 1, recordPixels.size(), pipe);
++            const double unixTime = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
++            recordIndex << stream << ',' << index << ',' << std::fixed << std::setprecision(4) << unixTime << ','
++                        << sim.truth.x << ',' << sim.truth.y << ',' << sim.truth.yaw << ','
++                        << camera.position.x << ',' << camera.position.y << ',' << camera.position.z << ','
++                        << recordLook.x << ',' << recordLook.y << ',' << recordLook.z << '\n';
++        };
++
+         canvas.animate([&] {
+             if (sim.stopRequested) {
+                 canvas.close();
+@@ -229,9 +289,33 @@ namespace explorer_sim {
+             const auto now = Clock::now();
+             // If the program was paused (a breakpoint, a dragged window), do not try
+             // to simulate the whole gap at once.
+-            const double elapsed = std::min(std::chrono::duration<double>(now - lastFrame).count(), 0.1);
++            double elapsed = std::min(std::chrono::duration<double>(now - lastFrame).count(), 0.1);
+             lastFrame = now;
+-            physicsAccumulator += elapsed;
++            if (replaying) {
++                if (replayFrame >= replayTrack.size()) {
++                    if (chasePipe) {
++                        _pclose(chasePipe);
++                        _pclose(overPipe);
++                        _pclose(eyePipe);
++                        chasePipe = overPipe = eyePipe = nullptr;
++                        recordIndex.close();
++                    }
++                    sim.stopRequested = true;
++                    return;
++                }
++                elapsed = 1.0 / 30.0;
++                const auto& pose = replayTrack[replayFrame];
++                sim.truth.x = pose[0];
++                sim.truth.y = pose[1];
++                sim.truth.yaw = pose[2];
++                sim.linear = pose[3];
++                sim.angular = pose[4];
++                sim.wheelLeftTurn += (pose[3] - pose[4] * robot::wheelSeparation / 2) * elapsed / robot::wheelRadius;
++                sim.wheelRightTurn += (pose[3] + pose[4] * robot::wheelSeparation / 2) * elapsed / robot::wheelRadius;
++                if (replayFrame % 3 == 0) (void) sim.castLidar();
++            } else {
++                physicsAccumulator += elapsed;
++            }
+             while (physicsAccumulator >= physicsDt) {
+                 sim.step(physicsDt);
+                 physicsAccumulator -= physicsDt;
+@@ -245,7 +329,7 @@ namespace explorer_sim {
+             //    down with it: ticks that were missed are not made up for, because a
+             //    lidar scan of a moment that has passed would be a scan of the wrong pose.
+             tickAccumulator += elapsed;
+-            if (tickAccumulator >= tickPeriod) {
++            if (!replaying && tickAccumulator >= tickPeriod) {
+                 tickAccumulator = std::fmod(tickAccumulator, tickPeriod);
+ 
+                 Telemetry sample;
+@@ -291,7 +375,8 @@ namespace explorer_sim {
+                 back = std::max(back, 0.5);
+                 const Vector3 wanted = toThree(sim.truth.x - back * c, sim.truth.y - back * sn, 1.9);
+                 camera.position.lerp(wanted, static_cast<float>(1.0 - std::exp(-3.0 * elapsed)));
+-                camera.lookAt(toThree(sim.truth.x + 1.0 * c, sim.truth.y + 1.0 * sn, 0.35));
++                recordLook = toThree(sim.truth.x + 1.0 * c, sim.truth.y + 1.0 * sn, 0.35);
++                camera.lookAt(recordLook);
+             }
+             lastFollowed = sim.truth;
+ 
+@@ -314,13 +399,51 @@ namespace explorer_sim {
+             }
+             sim.backdrop(false);
+ 
++            // FILM RECORDING: clean frames of two views instead of the overlay.
++            if (chasePipe != nullptr) {
++                if (replaying || recordFrame % 2 == 0) grab(chasePipe, "chase", recordChaseCount++);
++                if (replaying || recordFrame % 4 == 1) {
++                    Vector3 savedPosition;
++                    savedPosition.copy(camera.position);
++                    Quaternion savedQuaternion;
++                    savedQuaternion.copy(camera.quaternion);
++                    camera.position.copy(overviewPosition);
++                    camera.lookAt(overviewTarget);
++                    sim.robotMarker->visible = true;
++                    sim.lidarRays->visible = true;
++                    sim.mirrorDue = true;
++                    composer.render(static_cast<float>(elapsed));
++                    grab(overPipe, "over", recordOverCount++);
++                    sim.lidarRays->visible = false;
++                    camera.position.copy(savedPosition);
++                    camera.quaternion.copy(savedQuaternion);
++                }
++                if (replaying) {
++                    sim.backdrop(true);
++                    renderer.render(*sim.scene, *sim.robotEyeCamera);
++                    sim.backdrop(false);
++                    grab(eyePipe, "eye", recordEyeCount++);
++                    ++replayFrame;
++                }
++                ++recordFrame;
++                if (!replaying && recordFrame % 60 == 0) {
++                    recordIndex.flush();
++                    if (std::filesystem::exists(recordDir + "/stop")) {
++                        _pclose(chasePipe);
++                        _pclose(overPipe);
++                        chasePipe = overPipe = nullptr;
++                        recordIndex.close();
++                    }
++                }
++            }
++
+             // The 2D layer, over the finished picture.
+-            overlay.draw(renderer);
++            if (recordDir.empty()) overlay.draw(renderer);
+ 
+             // The picture in the camera card: the same scene once more, from the
+             // robot's camera, drawn into a rectangle of the window. The scissor test
+             // confines all drawing (and clearing) to the rectangle that was set last.
+-            {
++            if (recordDir.empty()) {
+                 const auto window = canvas.size();
+                 const Overlay::Rect picture = overlay.cameraPicture();
+                 renderer.setScissorTest(true);
+@@ -353,7 +476,7 @@ namespace explorer_sim {
+             // A hidden window is not held back by the display's refresh rate and would
+             // spin as fast as the CPU allows. Hold it to 60 frames a second with a
+             // rolling deadline (sleep_until, not sleep_for: see "Real-Time & Timing").
+-            if (config.headless) {
++            if (config.headless && !replaying) {
+                 nextFrame += std::chrono::microseconds(16667);
+                 if (nextFrame < Clock::now()) nextFrame = Clock::now();// fell behind: do not try to catch up
+                 std::this_thread::sleep_until(nextFrame);

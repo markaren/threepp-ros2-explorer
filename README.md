@@ -266,7 +266,7 @@ It is a teaching demo, and it cuts the corners that would hide the ideas:
 * **No physics engine.** The robot is a disc that cannot enter boxes. Enough for a lidar
   and a map, and it keeps the simulator's only dependency threepp.
 * **Nobody plans for the camera.** The explorer goes where the lidar has not seen yet.
-  The lidar sees all around and 8 m far, the camera 80 degrees ahead and 5 m, so a cone
+  The lidar sees all around and 8 m far, the camera 80 degrees ahead and 6 m, so a cone
   the robot happens never to face is never found. In eight recorded runs it found
   between four and six of the six (6, 6, 6, 5, 6, 4, 4, 5), and every cone it did find
   was placed within a few centimetres. Fixing that is one of the
@@ -277,6 +277,13 @@ It is a teaching demo, and it cuts the corners that would hide the ideas:
 * **Windows only**, as tested. Nothing in the code is Windows-specific except one
   function in the dashboard (the mouse position for `G`), but `pixi.toml` lists only
   `win-64` and `build.bat` is a batch file.
+
+## The film
+
+[`film/`](film/README.md) holds the script of a short film about this demo: the node graph,
+where threepp sits in a ROS 2 project, how to run it, and how it was made. It is a threepp
+program too (`threepp.lesson`), and its pictures come from one recorded run. The footage is
+not in the repository; the film's README says how it was recorded.
 
 ## Credits
 

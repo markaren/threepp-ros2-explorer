@@ -1,0 +1,72 @@
+{
+ "af_heart": {
+  "o1": {
+   "s": 9.45,
+   "said": "A robot explores a warehouse it has never seen. It is a Ross two demo for students, and three p p is its world, its sensors and its screen."
+  },
+  "w1": {
+   "s": 7.2,
+   "said": "The simulator is one C plus plus node. three p p draws the warehouse, and plays the robot's hardware."
+  },
+  "w2": {
+   "s": 6.92,
+   "said": "The lidar is a ray caster against the scene. The camera is a second render, from the robot's own eye."
+  },
+  "g1": {
+   "s": 6.3,
+   "said": "Everything else only sees Ross two topics. So each node can be written in the language that suits it."
+  },
+  "g2": {
+   "s": 7.97,
+   "said": "A mapper turns laser scans into a map. An explorer picks a frontier, the edge of what is known, and plans a path there."
+  },
+  "g3": {
+   "s": 7.88,
+   "said": "A safety monitor, in C plus plus, sits between the planner and the motors. It stops the robot before it hits anything."
+  },
+  "g4": {
+   "s": 6.17,
+   "said": "A cone spotter finds traffic cones in the camera image, and uses the lidar to place them on the map."
+  },
+  "g5": {
+   "s": 6.45,
+   "said": "And the dashboard is three p p again, this time from Python. It draws what the robot believes."
+  },
+  "b1": {
+   "s": 6.78,
+   "said": "Left, the world as it is. Right, the world as the robot believes it to be, built from its own scans."
+  },
+  "b2": {
+   "s": 6.55,
+   "said": "It drives to a frontier, the map grows, and it picks the next one. When none are left, it drives home."
+  },
+  "f1": {
+   "s": 10.53,
+   "said": "In C plus plus, C make fetches three p p and links it like any other library. The render loop keeps the main thread, and Ross two spins on a second one."
+  },
+  "f2": {
+   "s": 6.03,
+   "said": "In Python, it is a wheel from pie P I, installed next to Ross two by the same tool."
+  },
+  "u1": {
+   "s": 6.45,
+   "said": "Running it takes three commands. Pixie brings Ross two from Robo Stack, and three p p with it."
+  },
+  "a1": {
+   "s": 6.92,
+   "said": "The demo was built in two to three hours by an A I coding agent, Claude Code, with a person steering."
+  },
+  "a2": {
+   "s": 9.88,
+   "said": "Sub-agents wrote the Python packages in parallel, against one written interface. The result was checked in headless renders, full runs and unit tests."
+  },
+  "a3": {
+   "s": 6.83,
+   "said": "The first version worked, and looked like a game from the nineties. One line of feedback later, it looked like this."
+  },
+  "e1": {
+   "s": 5.85,
+   "said": "Ross two carries the messages. three p p is the world, the sensors and the screen."
+  }
+ }
+}

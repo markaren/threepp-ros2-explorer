@@ -19,3 +19,7 @@ imgui.ini
 # scratch output of test runs
 /_shots/
 *.log
+
+# the film's footage and renders (see film/README.md)
+/film/footage/
+lesson_out/
