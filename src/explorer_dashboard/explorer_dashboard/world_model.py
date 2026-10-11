@@ -108,3 +108,6 @@ class Inbox:
         self.cones: Mailbox[np.ndarray] = Mailbox()      # (N, 2) cone positions
         self.status: Mailbox[Status] = Mailbox()
         self.safety_stop: Mailbox[bool] = Mailbox()
+        # The robot's camera picture, ready to become a texture: (H, W, 3) RGB bytes,
+        # bottom row first.
+        self.camera: Mailbox[np.ndarray] = Mailbox()

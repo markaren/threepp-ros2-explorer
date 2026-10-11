@@ -32,6 +32,8 @@ namespace explorer_sim {
             bool headless = false;// true: no visible window (for tests and servers)
             int width = 1280;
             int height = 720;
+            std::string view = "overview";// the camera to start with: overview, follow or chase
+            bool effects = true;// ambient occlusion, bloom and floor reflections (P toggles)
 
             double odomRate = 30.0;  // odometry samples per second
             double sensorRate = 10.0;// lidar scans and camera frames per second

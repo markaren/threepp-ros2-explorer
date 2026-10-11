@@ -8,6 +8,8 @@ Arguments (name:=value on the command line):
     dashboard      true   open the operator's 3D window (the robot's belief)
     vision         true   run the cone spotter
     rviz           false  also open RViz with a ready-made configuration
+    effects        true   ambient occlusion, bloom, floor reflections (false: faster)
+    view           overview   the simulator's camera at start: overview, follow, chase
     headless       false  no visible windows (used for automated tests)
 
 `ros2 launch explorer_bringup demo.launch.py --show-args` lists them.
@@ -39,6 +41,10 @@ def generate_launch_description():
                               description='Run the cone spotter'),
         DeclareLaunchArgument('rviz', default_value='false',
                               description='Also open RViz'),
+        DeclareLaunchArgument('effects', default_value='true',
+                              description='Ambient occlusion, bloom and floor reflections in the simulator'),
+        DeclareLaunchArgument('view', default_value='overview',
+                              description="The simulator's camera at start: overview, follow or chase"),
         DeclareLaunchArgument('headless', default_value='false',
                               description='Run without visible windows'),
         DeclareLaunchArgument('screenshot_dir', default_value='.',
@@ -48,7 +54,12 @@ def generate_launch_description():
         # instead of repeating it means there is one place to change it.
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(PathJoinSubstitution([bringup, 'launch', 'sim.launch.py'])),
-            launch_arguments={'headless': headless, 'screenshot_dir': screenshot_dir}.items(),
+            launch_arguments={
+                'headless': headless,
+                'effects': LaunchConfiguration('effects'),
+                'view': LaunchConfiguration('view'),
+                'screenshot_dir': screenshot_dir,
+            }.items(),
         ),
 
         # ---- the robot's brain (Python) ---------------------------------------------

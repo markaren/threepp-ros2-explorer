@@ -85,6 +85,7 @@ namespace explorer_sim {
 
     World World::warehouse() {
         World w;
+        using Kind = Box::Kind;
 
         // ---- outer walls -----------------------------------------------------------
         w.boxes.push_back(wallAlongX(w.minY, w.minX - 0.1, w.maxX + 0.1));
@@ -92,7 +93,7 @@ namespace explorer_sim {
         w.boxes.push_back(wallAlongY(w.minX, w.minY, w.maxY));
         w.boxes.push_back(wallAlongY(w.maxX, w.minY, w.maxY));
 
-        // ---- wall between the loading dock (x < 5) and the hall --------------------
+        // ---- wall between the loading dock (x < 5) and the storage hall ------------
         // Two doors: a wide one straight ahead of the robot, a narrow one up north.
         w.boxes.push_back(wallAlongY(5, -8, -1));
         w.boxes.push_back(wallAlongY(5, 1, 5.5));
@@ -107,43 +108,98 @@ namespace explorer_sim {
         w.boxes.push_back(wallAlongX(0, 17, 20));
         w.boxes.push_back(wallAlongX(0, 21.5, 24));
 
-        // ---- shelves in the hall ---------------------------------------------------
-        // Four rows, each split in two so there is a cross passage in the middle.
-        // A 4 m wide main corridor runs between the inner rows.
-        for (const double y : {-5.0, -2.4, 2.4, 5.0}) {
-            w.boxes.push_back({8.7, y, 3.4, 0.8, 1.1, Box::Kind::Shelf});
-            w.boxes.push_back({13.3, y, 3.4, 0.8, 1.1, Box::Kind::Shelf});
+        // ---- pallet racks in the hall ----------------------------------------------
+        // Four rows (aisles A to D), each of two bays with a cross passage between
+        // them. A 4 m wide main corridor runs between the inner rows.
+        int rackCount = 0;
+        for (const double y : {5.0, 2.4, -2.4, -5.0}) {
+            for (const double x : {8.7, 13.3}) {
+                // Two differently loaded models, alternated so the rows do not look cloned.
+                const char* model = (rackCount % 3 == 1) ? "rack_b" : "rack_a";
+                // Every other bay is turned half a turn, which shows its other side.
+                w.boxes.push_back({x, y, 3.4, 0.8, 1.35, Kind::Rack, model, (rackCount % 2) * 2});
+                ++rackCount;
+            }
         }
 
-        // ---- crates ----------------------------------------------------------------
-        // Loading dock. The start position (0, 0) is kept clear.
-        w.boxes.push_back({-0.8, 5.6, 1.0, 1.0, 0.9, Box::Kind::Crate});
-        w.boxes.push_back({0.5, 6.7, 1.0, 1.0, 0.6, Box::Kind::Crate});
-        w.boxes.push_back({3.2, -5.8, 1.2, 0.8, 0.8, Box::Kind::Crate});
-        w.boxes.push_back({1.9, -6.7, 0.8, 0.8, 0.5, Box::Kind::Crate});
-        w.boxes.push_back({-1.0, -3.0, 1.2, 1.0, 0.4, Box::Kind::Crate});
-        // Main corridor: two crates left standing in the way.
-        w.boxes.push_back({9.0, 0.9, 0.8, 0.8, 0.7, Box::Kind::Crate});
-        w.boxes.push_back({13.6, -0.8, 0.9, 0.9, 0.9, Box::Kind::Crate});
-        // South office.
-        w.boxes.push_back({21.0, -4.2, 1.0, 1.0, 0.8, Box::Kind::Crate});
+        // ---- loading dock (the start position, the origin, is kept clear) ----------
+        w.boxes.push_back({-0.8, 5.6, 1.0, 1.0, 0.9, Kind::Crate, "crate"});
+        w.boxes.push_back({0.5, 6.7, 1.0, 1.0, 0.6, Kind::Crate, "crate"});
+        w.boxes.push_back({1.9, -6.7, 0.8, 0.8, 0.5, Kind::Crate, "crate"});
+        w.boxes.push_back({3.2, -5.8, 1.2, 0.8, 0.9, Kind::Prop, "pallet_a"});
+        w.boxes.push_back({-1.0, -3.0, 0.8, 1.2, 0.9, Kind::Prop, "pallet_b", 1});
+        w.boxes.push_back({-1.55, -7.55, 0.5, 0.5, 0.88, Kind::Prop, "barrel"});
+        w.boxes.push_back({-0.95, -7.6, 0.5, 0.5, 0.88, Kind::Prop, "barrel"});
+        w.boxes.push_back({-1.55, -6.95, 0.5, 0.5, 0.88, Kind::Prop, "barrel", 1});
+        w.boxes.push_back({4.25, 3.3, 1.1, 1.6, 1.38, Kind::Prop, "cart"});
+        w.boxes.push_back({-1.78, -4.9, 0.2, 0.66, 2.1, Kind::Prop, "ladder"});
 
-        // ---- desks in the offices --------------------------------------------------
-        w.boxes.push_back({22.5, 6.6, 1.6, 0.8, 0.75, Box::Kind::Desk});
-        w.boxes.push_back({19.0, 6.9, 1.6, 0.8, 0.75, Box::Kind::Desk});
-        w.boxes.push_back({23.2, 2.6, 0.8, 1.6, 0.75, Box::Kind::Desk});
-        w.boxes.push_back({18.3, -1.3, 1.4, 0.8, 0.75, Box::Kind::Desk});
-        w.boxes.push_back({22.8, -6.6, 1.6, 0.8, 0.75, Box::Kind::Desk});
+        // ---- main corridor: things left standing in the way ------------------------
+        w.boxes.push_back({9.0, 0.9, 0.8, 0.8, 0.7, Kind::Crate, "crate"});
+        w.boxes.push_back({13.6, -0.8, 1.2, 0.8, 0.9, Kind::Prop, "pallet_a"});
+
+        // ---- offices ---------------------------------------------------------------
+        // The desk model is 0.95 m deep and 2 m wide, with its drawers on its +x side.
+        // Each desk stands against a wall, turned so the drawers face the room.
+        w.boxes.push_back({22.3, 7.35, 2.0, 0.95, 0.79, Kind::Desk, "desk", 3});
+        w.boxes.push_back({19.3, 7.35, 2.0, 0.95, 0.79, Kind::Desk, "desk", 3});
+        w.boxes.push_back({23.37, 2.6, 0.95, 2.0, 0.79, Kind::Desk, "desk", 2});
+        w.boxes.push_back({18.4, -0.63, 2.0, 0.95, 0.79, Kind::Desk, "desk", 3});
+        w.boxes.push_back({22.6, -7.37, 2.0, 0.95, 0.79, Kind::Desk, "desk", 1});
+        w.boxes.push_back({22.3, 6.45, 0.47, 0.45, 0.46, Kind::Prop, "stool"});
+        w.boxes.push_back({22.45, 2.4, 0.47, 0.45, 0.46, Kind::Prop, "stool"});
+        w.boxes.push_back({22.6, -6.45, 0.47, 0.45, 0.46, Kind::Prop, "stool"});
+        w.boxes.push_back({21.0, -4.2, 1.0, 1.0, 0.8, Kind::Crate, "crate"});
+        w.boxes.push_back({17.65, 6.9, 0.8, 1.2, 0.9, Kind::Prop, "pallet_b", 1});
 
         // ---- traffic cones, for the camera to find ---------------------------------
         w.cones = {
-                {3.6, 3.2},  // loading dock
-                {9.0, 6.6},  // north aisle
-                {12.5, -3.2},// between the southern shelf rows
+                {2.4, 5.4},  // loading dock
+                {9.0, 6.6},  // aisle A
+                {12.5, -3.2},// aisle D
                 {16.1, 0.9}, // end of the main corridor
                 {20.5, 5.0}, // north office
                 {22.5, -3.0},// south office
         };
+
+        // ---- signs -----------------------------------------------------------------
+        // A sign's readable face looks along its yaw. Walls are 0.2 m thick, so a sign
+        // on a wall sits 0.1 m from the wall's centre line.
+        const double signZ = 1.12;
+        w.decorations = {
+                {"sign_exit", w.minX + 0.11, 0.0, signZ, 0},        // behind the robot's start
+                {"sign_storage", 5 - 0.11, -2.4, signZ, 180},       // dock side, beside the wide door
+                {"sign_dock", 5 + 0.11, 3.2, signZ, 0},             // hall side
+                {"sign_office", 17 - 0.11, -1.5, signZ, 180},       // hall side, between the office doors
+                // One letter on the end of each rack row, facing the dock.
+                {"sign_aisle_A", 7.0 - 0.03, 5.0, 1.05, 180},
+                {"sign_aisle_B", 7.0 - 0.03, 2.4, 1.05, 180},
+                {"sign_aisle_C", 7.0 - 0.03, -2.4, 1.05, 180},
+                {"sign_aisle_D", 7.0 - 0.03, -5.0, 1.05, 180},
+                // Totes left on top of things. (On the floor they would be a trap: at
+                // 25 cm they are lower than the lidar's scan plane, so the robot could
+                // not see them. A real problem for real robots with a 2D lidar.)
+                {"tote", 22.9, 7.3, 0.79, 20},
+                {"tote", 18.0, -0.6, 0.79, -10},
+                {"tote", -0.8, 5.6, 0.9, 35},
+                {"tote", 21.0, -4.2, 0.8, 75},
+        };
+
+        // ---- floor markings --------------------------------------------------------
+        // The edges of the main corridor ...
+        w.floorLines.push_back({5.4, 1.75, 16.6, 1.75});
+        w.floorLines.push_back({5.4, -1.75, 16.6, -1.75});
+        // ... a line along the foot of every rack row ...
+        //     (the inner rows share the corridor's edge lines)
+        for (const double y : {5.6, 4.4, 3.0, -3.0, -4.4, -5.6}) {
+            w.floorLines.push_back({6.8, y, 15.2, y, 0.05});
+        }
+        // ... and a square pad where the robot is parked.
+        const double pad = 0.6;
+        w.floorLines.push_back({-pad, -pad, pad, -pad});
+        w.floorLines.push_back({pad, -pad, pad, pad});
+        w.floorLines.push_back({pad, pad, -pad, pad});
+        w.floorLines.push_back({-pad, pad, -pad, -pad});
 
         return w;
     }

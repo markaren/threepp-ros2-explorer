@@ -64,9 +64,13 @@ class DashboardApp:
             if not self._have_map:
                 # The first map tells us how big the world is: frame all of it.
                 # The factor leaves room for the near edge, which perspective widens.
-                self._window.look_at_area(grid.origin_x + grid.width_m / 2.0,
+                # The left 30 % of the window is the HUD's column, so the map is
+                # framed in what is left: seen from a little further away, and looked
+                # at off-centre so that it slides to the right.
+                view_width = 1.5 * grid.width_m
+                self._window.look_at_area(grid.origin_x + grid.width_m / 2.0 - 0.145 * view_width,
                                           grid.origin_y + grid.height_m / 2.0,
-                                          1.12 * grid.width_m)
+                                          view_width)
                 self._have_map = True
 
         pose = inbox.pose.take()
@@ -89,6 +93,10 @@ class DashboardApp:
         cones = inbox.cones.take()
         if cones is not None:
             world.set_cones(cones)
+
+        image = inbox.camera.take()
+        if image is not None:
+            self._window.hud.set_camera_image(image)
 
         status = inbox.status.take()
         if status is not None:

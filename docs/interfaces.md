@@ -53,6 +53,7 @@ threepp y.
 | `camera/camera_info` | `sensor_msgs/CameraInfo` | `sim` | `cone_spotter` | 10 Hz | sensor data |
 | `detections` | `vision_msgs/Detection2DArray` | `cone_spotter` | anyone | per image | reliable, depth 10 |
 | `cones` | `visualization_msgs/MarkerArray` | `cone_spotter` | `dashboard`, RViz | 2 Hz | reliable, transient local, depth 1 |
+| `camera/annotated/compressed` | `sensor_msgs/CompressedImage` (`jpeg`) | `cone_spotter` | `dashboard`, `rqt_image_view` | per image | sensor data |
 | `ground_truth` | `geometry_msgs/PoseStamped` | `sim` | for comparing against `odom` | 30 Hz | reliable, depth 10 |
 | `cmd_vel_nav` | `geometry_msgs/Twist` | `explorer` | `safety_monitor` | 20 Hz | reliable, depth 10 |
 | `cmd_vel` | `geometry_msgs/Twist` | `safety_monitor` | `sim` | 20 Hz | reliable, depth 10 |
@@ -80,6 +81,13 @@ Details that matter:
   when the frame was taken).
 * **`cones`**: every distinct cone found so far, in frame `map`: one `CYLINDER` marker each,
   namespace `"cones"`, ids stable (cone 0 stays id 0). A `DELETEALL` marker comes first.
+* **`cmd_vel_nav`** is only published while the explorer has a job: 20 Hz while driving,
+  one zero command when it stops, then silence.
+* **`safety_stop`** is `true` while the safety monitor is cutting forward speed to zero:
+  something is within `stop_clearance` (0.10 m) of the robot's front edge, in the strip
+  of floor the robot would sweep driving straight on, or no scan has arrived for 0.5 s.
+  Between `slow_clearance` (0.50 m) and `stop_clearance` forward speed is scaled down
+  without the flag being set. Turning is never limited.
 * **`cmd_vel`**: only `linear.x` (m/s) and `angular.z` (rad/s) are used. The sim limits them to
   0.8 m/s and 2.0 rad/s, limits acceleration, and **stops the robot if no command arrives for
   0.5 s**. A controller must therefore keep publishing, exactly as on a real robot.
@@ -110,6 +118,25 @@ wants progress reports while it runs, and must be able to cancel it.
 * **Feedback**: an `ExplorationStatus`, about twice a second.
 * **Result**: `success`, `message`, `explored_area` (m²), `distance` (m), `duration` (s).
 * **Cancel**: accepted at any time. The robot stops.
+
+## Parameters that change behaviour while running
+
+| Node | Parameter | Effect |
+|---|---|---|
+| `sim` | `lidar_noise` | standard deviation of the range noise, m |
+| `sim` | `odom_drift` | 0 = perfect odometry. 1 = about 1.7 degrees of heading error per metre |
+| `sim` | `view` | the window's camera: `overview`, `follow`, `chase` |
+| `cone_spotter` | `hue_min`, `hue_max`, `saturation_min`, `value_min` | what counts as "orange" |
+| `cone_spotter` | `max_range`, `distance_tolerance` | which detections are placed on the map |
+
+Everything else is read once at start. `ros2 param describe <node> <parameter>` says which.
+
+## A note on tf and namespaces
+
+All topic names here are relative, so a robot's nodes can be pushed into a namespace.
+tf2 is the exception: it always uses the absolute topics `/tf` and `/tf_static`, and
+frame names (`base_link`) are global. Two robots in one graph need prefixed frame names
+or remapped tf topics.
 
 ## Custom interface definitions
 

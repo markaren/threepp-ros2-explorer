@@ -116,7 +116,10 @@ private:
             // 1 when there is plenty of room, falling linearly to 0 at stop_clearance.
             const double scale = std::clamp((clearance - stopClearance_) / (slowClearance_ - stopClearance_), 0.0, 1.0);
             safe.linear.x = command.linear.x * scale;
-            holdingBack = scale == 0.0;
+            // The flag has hysteresis: it is raised at stop_clearance and only lowered
+            // again a few centimetres further out. Without that, lidar noise makes the
+            // clearance hop back and forth over the threshold and the flag flickers.
+            holdingBack = holdingBack_ ? clearance < stopClearance_ + 0.04 : scale == 0.0;
         }
 
         commandPub_->publish(safe);

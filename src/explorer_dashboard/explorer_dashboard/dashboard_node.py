@@ -22,6 +22,7 @@ import time
 from typing import Callable, Optional
 
 from action_msgs.msg import GoalStatus
+import cv2
 from explorer_interfaces.action import Explore
 from explorer_interfaces.msg import ExplorationStatus
 from geometry_msgs.msg import PoseStamped, TransformStamped
@@ -35,7 +36,7 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import CompressedImage, LaserScan
 from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
 from tf2_ros import Buffer, TransformException, TransformListener
@@ -146,6 +147,17 @@ class DashboardNode(Node):
         # cannot hear a best effort publisher, so this one must be best effort too.
         self.create_subscription(LaserScan, 'scan', self._on_scan,
                                  qos_profile_sensor_data)
+        # The robot's camera, twice: as the simulator publishes it, and as the cone
+        # spotter republishes it with its detections drawn in. The dashboard shows the
+        # annotated one while it is coming, and the plain one otherwise (for example
+        # when the demo was started with vision:=false).
+        self._last_annotated = 0.0
+        self.create_subscription(
+            CompressedImage, 'camera/annotated/compressed',
+            functools.partial(self._on_camera, annotated=True), qos_profile_sensor_data)
+        self.create_subscription(
+            CompressedImage, 'camera/image/compressed',
+            functools.partial(self._on_camera, annotated=False), qos_profile_sensor_data)
         self._goal_publisher = self.create_publisher(PoseStamped, 'goal_pose', newest)
 
         # ---- tf2 ------------------------------------------------------------------
@@ -227,6 +239,21 @@ class DashboardNode(Node):
 
     def _on_cones(self, message: MarkerArray) -> None:
         self.inbox.cones.post(marker_positions(message, 'cones'))
+
+    def _on_camera(self, message: CompressedImage, annotated: bool) -> None:
+        now = time.monotonic()
+        if annotated:
+            self._last_annotated = now
+        elif now - self._last_annotated < 1.0:
+            return   # the annotated stream is alive: that one is shown
+        # A CompressedImage is a JPEG file in a message. Decoding it is this thread's
+        # job: the render thread should only have to hand finished pixels to the GPU.
+        pixels = cv2.imdecode(np.frombuffer(message.data, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if pixels is None:
+            return
+        # OpenCV gives BGR with the top row first. A texture wants RGB with the bottom
+        # row first. One slice does both, and ascontiguousarray makes a real copy of it.
+        self.inbox.camera.post(np.ascontiguousarray(pixels[::-1, :, ::-1]))
 
     def _on_safety_stop(self, message: Bool) -> None:
         self.inbox.safety_stop.post(message.data)

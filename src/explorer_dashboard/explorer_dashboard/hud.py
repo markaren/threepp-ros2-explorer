@@ -8,8 +8,9 @@ Render thread only, like everything that calls threepp (see mailbox.py).
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
+import numpy as np
 import threepp as tp
 
 from explorer_dashboard import palette
@@ -111,8 +112,55 @@ class Panel:
         self.mesh.position.set(left + width / 2.0, bottom + height / 2.0, -1.0)
 
 
+class CameraPanel:
+    """The robot's camera picture as a rectangle in the HUD, with a thin frame."""
+
+    def __init__(self, scene: tp.Scene, font: tp.Font) -> None:
+        self._frame = Panel(scene, palette.ROBOT, 1.0)
+        self._frame.mesh.visible = False
+        self._material = tp.MeshBasicMaterial()
+        self._material.depth_test = False
+        # In the transparent group like everything else in the HUD, so render_order
+        # can put it on top of its frame.
+        self._material.transparent = True
+        self._mesh = tp.Mesh(tp.PlaneGeometry(1.0, 1.0), self._material)
+        self._mesh.render_order = 2
+        self._mesh.visible = False
+        scene.add(self._mesh)
+        self._caption = Label(scene, font, 14, DIM)
+        self._caption.set('ROBOT CAMERA, with detections', DIM)
+        self._caption.show(False)
+        self._texture: Optional[tp.Texture] = None
+        self._shape: Optional[Tuple[int, ...]] = None
+
+    def place(self, left: float, bottom: float, width: float, height: float) -> None:
+        self._frame.place(left - 2.0, bottom - 2.0, width + 4.0, height + 4.0)
+        self._mesh.scale.set(width, height, 1.0)
+        self._mesh.position.set(left + width / 2.0, bottom + height / 2.0, 0.0)
+        self._caption.place(left, bottom + height + 8.0)
+
+    def set_image(self, image: np.ndarray) -> None:
+        """Show a new picture: (H, W, 3) RGB bytes, bottom row first."""
+        if image.shape != self._shape:
+            self._texture = tp.data_texture(image, srgb=True)
+            self._texture.needs_update()
+            self._material.map = self._texture
+            self._material.needs_update()
+            self._shape = image.shape
+        else:
+            # Same size as the last picture: overwrite the pixels, keep the texture.
+            self._texture.update_data(image)
+        self._mesh.visible = True
+        self._frame.mesh.visible = True
+        self._caption.show(True)
+
+
 class Hud:
-    """State, numbers, legend, safety stop banner, operator messages and key help."""
+    """State, numbers, camera picture, legend, safety stop banner, messages, key help.
+
+    Layout: a column on the left holds the status, the camera picture and the legend.
+    The 3D view is framed so that the map fills the rest (see DashboardApp).
+    """
 
     ROWS = ('Explored', 'Distance', 'Elapsed', 'Frontiers')
     NOTICE_LINES = 3
@@ -144,6 +192,7 @@ class Hud:
         self._stop.set('SAFETY STOP', 0xffffff)
 
         # The legend: one coloured square and one line of text per kind of object.
+        self._camera_panel = CameraPanel(self.scene, font)
         self._legend_panel = Panel(self.scene, PANEL, 0.82)
         self._legend_swatches = [Panel(self.scene, color, 1.0)
                                  for color, _ in palette.LEGEND]
@@ -171,21 +220,32 @@ class Hud:
             self._names[index].place(left, baseline)
             self._values[index].place(left + 136.0, baseline)
         self._follow.place(left, top - 212.0)
-        self._waiting.place(left, top - 256.0)
+        column_width = 344.0
+        # To the right of the column, so it is never under the camera picture.
+        self._waiting.place(left + column_width + 12.0, top - 16.0)
 
-        legend_width = 26.0 + max(label.width() for label in self._legend_labels)
-        legend_left = width - 24.0 - legend_width
-        self._legend_panel.place(legend_left - 12.0, top - 22.0 * len(palette.LEGEND),
-                                 legend_width + 24.0, 22.0 * len(palette.LEGEND) + 12.0)
+        # The camera picture, under the status panel, as wide as the column and in the
+        # camera's own 16:9 shape.
+        picture_width = column_width - 24.0
+        picture_height = picture_width * 9.0 / 16.0
+        picture_bottom = top - 226.0 - 36.0 - picture_height
+        self._camera_panel.place(left, picture_bottom, picture_width, picture_height)
+
+        # The legend, under the picture.
+        legend_top = picture_bottom - 22.0
+        legend_height = 22.0 * len(palette.LEGEND) + 12.0
+        self._legend_panel.place(left - 12.0, legend_top - legend_height + 12.0,
+                                 column_width, legend_height)
         for index, label in enumerate(self._legend_labels):
-            baseline = top - 16.0 - 22.0 * index
-            self._legend_swatches[index].place(legend_left, baseline - 1.0, 13.0, 13.0)
-            label.place(legend_left + 26.0, baseline)
+            baseline = legend_top - 16.0 - 22.0 * index
+            self._legend_swatches[index].place(left, baseline - 1.0, 13.0, 13.0)
+            label.place(left + 26.0, baseline)
 
         self._help_panel.place(0.0, 0.0, float(width), 38.0)
         self._help.place(left, 13.0)
+        # Messages for the operator: bottom of the 3D view, clear of the column.
         for index, notice in enumerate(self._notices):
-            notice.place(left, 52.0 + 26.0 * index)
+            notice.place(left + column_width + 12.0, 52.0 + 26.0 * index)
         self._place_stop_banner()
 
     def _place_stop_banner(self) -> None:
@@ -194,6 +254,9 @@ class Hud:
         self._stop_panel.place(centre - text_width / 2.0 - 28.0, self._height - 78.0,
                                text_width + 56.0, 56.0)
         self._stop.place(centre - text_width / 2.0, self._height - 62.0)
+
+    def set_camera_image(self, image: np.ndarray) -> None:
+        self._camera_panel.set_image(image)
 
     def update(self, data: HudData) -> None:
         status = data.status

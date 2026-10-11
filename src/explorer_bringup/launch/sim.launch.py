@@ -30,11 +30,17 @@ def generate_launch_description():
     # LaunchConfiguration('headless') is a placeholder for that value. It arrives as
     # text, so ParameterValue says which type the node's parameter expects.
     headless = ParameterValue(LaunchConfiguration('headless'), value_type=bool)
+    effects = ParameterValue(LaunchConfiguration('effects'), value_type=bool)
     screenshot_dir = LaunchConfiguration('screenshot_dir')
 
     return LaunchDescription([
         DeclareLaunchArgument('headless', default_value='false',
                               description='Run the simulator without a visible window'),
+        DeclareLaunchArgument('effects', default_value='true',
+                              description='Ambient occlusion, bloom and floor reflections. '
+                                          'false on a slow graphics card'),
+        DeclareLaunchArgument('view', default_value='overview',
+                              description="The simulator's camera at start: overview, follow or chase"),
         DeclareLaunchArgument('screenshot_dir', default_value='.',
                               description='Where the screenshot services write their PNG files'),
 
@@ -43,7 +49,12 @@ def generate_launch_description():
             executable='sim',
             output='screen',
             # Later entries override earlier ones: the file first, then the arguments.
-            parameters=[parameters, {'headless': headless, 'screenshot_dir': screenshot_dir}],
+            parameters=[parameters, {
+                'headless': headless,
+                'effects': effects,
+                'view': LaunchConfiguration('view'),
+                'screenshot_dir': screenshot_dir,
+            }],
         ),
         Node(
             package='explorer_safety',

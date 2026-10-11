@@ -45,13 +45,15 @@ FetchContent_MakeAvailable(threepp)
 
 # ---- the node -----------------------------------------------------------------------
 # Two halves that do not include each other's libraries:
-#   simulator.cpp, world.cpp   threepp only  (no ROS headers)
-#   sim_node.cpp               ROS only      (no threepp headers)
+#   simulator.cpp, scene.cpp, window.cpp, world.cpp   threepp only  (no ROS headers)
+#   sim_node.cpp                                      ROS only      (no threepp headers)
 # main.cpp wires them together. Building the simulator half as its own library makes
 # the rule checkable: it does not link rclcpp, so a stray ROS include fails to compile.
 add_library(simulator STATIC
-        src/simulator.cpp
-        src/world.cpp
+        src/simulator.cpp   # what happens: physics, sensors
+        src/scene.cpp       # what is drawn
+        src/window.cpp      # the window and the frame loop
+        src/world.cpp       # the building as data, collision
 )
 target_include_directories(simulator PUBLIC include)
 target_link_libraries(simulator PUBLIC threepp::threepp)

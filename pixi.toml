@@ -33,7 +33,8 @@ RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
 build = 'cmd /c .\build.bat'
 # added for this demo
 demo = "ros2 launch explorer_bringup demo.launch.py"
-test = "colcon test --base-paths src --merge-install --packages-select explorer_nav --event-handlers console_direct+"
+# The unit tests of the algorithm modules. They need no running ROS graph.
+test = "python -m pytest src/explorer_nav/test src/explorer_vision/test -q"
 
 # Dependencies used by all environments
 [dependencies]

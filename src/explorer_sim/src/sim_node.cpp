@@ -101,7 +101,7 @@ namespace explorer_sim {
         //   ros2 param set /sim lidar_noise 0.05
         parameterCallback_ = add_on_set_parameters_callback(
                 [this](const std::vector<rclcpp::Parameter>& parameters) { return onParametersChanged(parameters); });
-        channels_.tuning.set({get_parameter("lidar_noise").as_double(), get_parameter("odom_drift").as_double()});
+        channels_.tuning.set({get_parameter("lidar_noise").as_double(), get_parameter("odom_drift").as_double(), {}});
     }
 
     void SimNode::declareParameters() {
@@ -111,6 +111,8 @@ namespace explorer_sim {
         declare_parameter("headless", false, describe("Run without a visible window", true));
         declare_parameter("width", 1280, describe("Window width in pixels", true));
         declare_parameter("height", 720, describe("Window height in pixels", true));
+        declare_parameter("view", "overview", describe("The window's camera: overview, follow or chase. Can be changed while running (and with the F key)."));
+        declare_parameter("effects", true, describe("Ambient occlusion, bloom and floor reflections. Switch off on a slow graphics card (P toggles while running)", true));
         declare_parameter("odom_rate", 30.0, describe("Odometry and tf samples per second", true));
         declare_parameter("sensor_rate", 10.0, describe("Lidar scans and camera frames per second", true));
         declare_parameter("lidar_beams", 360, describe("Beams per lidar revolution", true));
@@ -132,6 +134,8 @@ namespace explorer_sim {
         config.headless = get_parameter("headless").as_bool();
         config.width = static_cast<int>(get_parameter("width").as_int());
         config.height = static_cast<int>(get_parameter("height").as_int());
+        config.view = get_parameter("view").as_string();
+        config.effects = get_parameter("effects").as_bool();
         config.odomRate = get_parameter("odom_rate").as_double();
         config.sensorRate = get_parameter("sensor_rate").as_double();
         config.lidarBeams = static_cast<int>(get_parameter("lidar_beams").as_int());
@@ -162,6 +166,15 @@ namespace explorer_sim {
                     return result;
                 }
                 (parameter.get_name() == "lidar_noise" ? tuning.lidarNoise : tuning.odomDrift) = value;
+            }
+            if (parameter.get_name() == "view") {
+                const std::string value = parameter.as_string();
+                if (value != "overview" && value != "follow" && value != "chase") {
+                    result.successful = false;
+                    result.reason = "view must be overview, follow or chase";
+                    return result;
+                }
+                tuning.view = value;
             }
         }
         channels_.tuning.set(tuning);
