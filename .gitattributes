@@ -1,0 +1,2 @@
+# A patch must reach `git apply` byte for byte, whatever the checkout does to line endings.
+*.patch -text
