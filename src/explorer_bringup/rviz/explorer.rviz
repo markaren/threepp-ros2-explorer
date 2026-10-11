@@ -1,0 +1,113 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Background Color: 24; 28; 36
+    Fixed Frame: map
+    Frame Rate: 30
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Cell Size: 1
+      Plane Cell Count: 60
+      Color: 70; 78; 92
+    - Class: rviz_default_plugins/Map
+      Name: Map
+      Enabled: true
+      Alpha: 0.85
+      Color Scheme: map
+      Topic:
+        Value: /map
+        Depth: 1
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+    - Class: rviz_default_plugins/LaserScan
+      Name: LaserScan
+      Enabled: true
+      Style: Points
+      Size (Pixels): 3
+      Color Transformer: FlatColor
+      Color: 255; 45; 117
+      Topic:
+        Value: /scan
+        Depth: 5
+        Reliability Policy: Best Effort
+        Durability Policy: Volatile
+        History Policy: Keep Last
+    - Class: rviz_default_plugins/Path
+      Name: Plan
+      Enabled: true
+      Color: 255; 200; 60
+      Line Style: Billboards
+      Line Width: 0.06
+      Topic:
+        Value: /plan
+        Depth: 1
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
+        History Policy: Keep Last
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Frontiers
+      Enabled: true
+      Topic:
+        Value: /frontiers
+        Depth: 1
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
+        History Policy: Keep Last
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Cones
+      Enabled: true
+      Topic:
+        Value: /cones
+        Depth: 1
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Show Names: true
+      Marker Scale: 1.5
+    - Class: rviz_default_plugins/Odometry
+      Name: Odometry
+      Enabled: false
+      Keep: 50
+      Topic:
+        Value: /odom
+        Depth: 10
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
+        History Policy: Keep Last
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /goal_pose
+        Depth: 1
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
+        History Policy: Keep Last
+    - Class: rviz_default_plugins/Measure
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Distance: 32
+      Pitch: 0.95
+      Yaw: 4.71
+      Focal Point:
+        X: 11
+        Y: 0
+        Z: 0
+      Target Frame: <Fixed Frame>
+Window Geometry:
+  Width: 1280
+  Height: 800

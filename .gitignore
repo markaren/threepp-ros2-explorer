@@ -1,0 +1,21 @@
+# colcon output
+/build/
+/install/
+/log/
+
+# the pixi environment (pixi.lock IS committed: it pins the exact versions)
+/.pixi/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# editors
+.idea/
+.vscode/
+imgui.ini
+
+# scratch output of test runs
+/_shots/
+*.log

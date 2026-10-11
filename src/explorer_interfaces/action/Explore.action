@@ -1,0 +1,18 @@
+# Explore the building until no reachable frontier is left.
+#
+# An action has three parts, separated by "---": the goal the client sends, the result
+# the server answers with at the very end, and the feedback it streams in between.
+
+# ---- Goal ----
+float32 time_limit      # give up after this many seconds. 0 = no limit
+bool return_home        # when done, drive back to where the robot started
+---
+# ---- Result ----
+bool success            # true if the building was explored completely
+string message
+float32 explored_area   # m^2 of floor known to be free
+float32 distance        # m driven
+float32 duration        # s
+---
+# ---- Feedback ----
+ExplorationStatus status

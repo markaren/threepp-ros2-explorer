@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>explorer_interfaces</name>
+  <version>0.1.0</version>
+  <description>The custom message, service and action of the threepp ROS 2 explorer demo</description>
+  <maintainer email="larsivarhatledal@gmail.com">Lars Ivar Hatledal</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <!-- Explore.action needs the action bookkeeping types (goal ids, status) -->
+  <depend>action_msgs</depend>
+
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <!-- Marks this as an interface package, so tools like `ros2 interface list` find it -->
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

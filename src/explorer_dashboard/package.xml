@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>explorer_dashboard</name>
+  <version>0.1.0</version>
+  <description>Mission control for the exploring robot: a 3D view, drawn with threepp, of what the robot believes (its map, its plan), and the operator's buttons.</description>
+  <maintainer email="larsivarhatledal@gmail.com">Lars Ivar Hatledal</maintainer>
+  <license>MIT</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>explorer_interfaces</exec_depend>
+
+  <!--
+    One dependency is missing from the list above on purpose: threepp, the 3D engine.
+    It is a pip package (threepp>=2026.10.11 on PyPI), and rosdep has no key for it, so
+    it cannot be named here. It is listed in setup.py (install_requires) and installed
+    by pixi (see [feature.jazzy.pypi-dependencies] in the pixi.toml of the workspace).
+  -->
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

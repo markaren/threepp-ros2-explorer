@@ -1,0 +1,68 @@
+# The development environment of this workspace, described in one file.
+#
+# This is the course's RoboStack pixi.toml (the one you placed in C:\robostack) with a few
+# lines added. They are marked "added for this demo". The environment has the same
+# name, so everything the book says still holds here:
+#
+#   pixi install -e jazzy       download ROS 2 Jazzy + tools into .pixi/ next to this file
+#   pixi shell -e jazzy         enter the environment ("sourcing ROS")
+#   pixi run -e jazzy build     compile the workspace with colcon
+#   pixi run -e jazzy demo      start everything
+#
+# See README.md for the walkthrough.
+
+[workspace]
+name = "threepp-ros2-demo"
+description = "A robot explores an unknown warehouse: ROS 2 in C++ and Python, simulated and drawn with threepp"
+channels = ["https://prefix.dev/conda-forge"]
+platforms = ["win-64"]
+
+# After the first build, entering the environment also sources this workspace, so
+# `ros2 run explorer_sim sim` finds the packages built here.
+[target.win.activation]
+scripts = ["install/setup.bat"]
+
+# added for this demo: which DDS implementation ROS 2 talks through.
+# See "Why CycloneDDS" in README.md.
+[activation.env]
+RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
+
+[feature.build.target.win-64.tasks]
+# build.bat loads the Visual Studio compiler environment, then runs
+#   colcon build --base-paths src --merge-install --cmake-args -GNinja -DCMAKE_BUILD_TYPE=Release
+build = 'cmd /c .\build.bat'
+# added for this demo
+demo = "ros2 launch explorer_bringup demo.launch.py"
+test = "colcon test --base-paths src --merge-install --packages-select explorer_nav --event-handlers console_direct+"
+
+# Dependencies used by all environments
+[dependencies]
+python = "*"
+# Build tools
+pkg-config = "*"
+make = "*"
+ninja = "*"
+# ROS specific tools
+rosdep = "*"
+colcon-common-extensions = "*"
+semver = "*"
+filelock = "*"
+
+[environments]
+jazzy = { features = ["jazzy", "build"] }
+
+### ROS Jazzy ####
+[feature.jazzy]
+channels = ["https://prefix.dev/robostack-jazzy"]
+
+[feature.jazzy.dependencies]
+ros-jazzy-desktop = "*"
+# added for this demo: the middleware, and the standard message type for detections
+ros-jazzy-rmw-cyclonedds-cpp = "*"
+ros-jazzy-vision-msgs = "*"
+numpy = "*"
+
+# added for this demo: threepp for Python comes from PyPI, like any pip package.
+# (The C++ library is fetched by CMake instead, see src/explorer_sim/CMakeLists.txt.)
+[feature.jazzy.pypi-dependencies]
+threepp = ">=2026.10.11"
