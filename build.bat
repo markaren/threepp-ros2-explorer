@@ -29,6 +29,12 @@ rem pixi environment back in front, so the build uses one set of tools: the envi
 set "PATH=%CONDA_PREFIX%\Library\bin;%CONDA_PREFIX%\Scripts;%CONDA_PREFIX%;%PATH%"
 
 :build
+rem An OpenCV installed by hand usually leaves the variable OpenCV_DIR behind, and CMake
+rem looks there before it looks in the environment. The simulator would then compile with
+rem the environment's headers and link the other OpenCV's library, and fail at its first
+rem camera frame. Clear it for this build: here the environment owns OpenCV.
+set "OpenCV_DIR="
+
 rem --base-paths src   look for packages in src/ only (not in .pixi/ or build/)
 rem --merge-install    one shared install/ tree. Windows copes badly with the default,
 rem                    which is one install folder per package and long PATHs.
