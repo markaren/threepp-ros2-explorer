@@ -42,7 +42,8 @@ namespace explorer_sim {
 
         // The cards and text that lie over the picture. What they show is in
         // overlay.cpp, how they are drawn in hud.cpp.
-        Overlay overlay(static_cast<float>(config.cameraWidth) / static_cast<float>(config.cameraHeight));
+        Overlay overlay(static_cast<float>(config.cameraWidth) / static_cast<float>(config.cameraHeight),
+                        canvas.size().width());
         overlay.showEffects(effects);
 
         // The window's camera. It starts with an overview of the whole building from

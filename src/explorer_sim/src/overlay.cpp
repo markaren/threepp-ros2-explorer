@@ -20,17 +20,27 @@ namespace explorer_sim {
         constexpr float cardAlpha = 0.80f;
 
         // Sizes below are written in pixels at 100 % display scaling. Every one of them
-        // is multiplied by the display's scale factor (s_), so the layer reads the same
-        // on a 4K laptop screen and on a projector.
+        // is multiplied by one scale factor (s_), so the layer reads the same on a 4K
+        // laptop screen and on a projector, as long as the window is wide enough.
         constexpr float statusW = 500, statusH = 110;
         constexpr float legendW = 216, legendH = 92;
         constexpr float keysH = 38, capH = 22;
         constexpr float margin = 16;
+        // The cards are laid out for a window this wide at 100 %.
+        constexpr float designW = 1280;
+
+        // The display's scale factor, but no more than the window has room for. The
+        // window's size is given in real pixels: on a display at 200 % a window 1280 wide
+        // has room for the cards at 100 %, and one 2560 wide for the cards at 200 %.
+        float scaleFor(int windowWidth) {
+            const float display = std::max(1.f, monitor::contentScale().first);
+            return std::clamp(static_cast<float>(windowWidth) / designW, 1.f, display);
+        }
 
     }// namespace
 
-    Overlay::Overlay(float pictureAspect)
-        : s_(monitor::contentScale().first), pictureAspect_(pictureAspect) {
+    Overlay::Overlay(float pictureAspect, int windowWidth)
+        : s_(scaleFor(windowWidth)), pictureAspect_(pictureAspect) {
         const float s = s_;
 
         // The order of the calls is the order of drawing: a card first, then what is on it.

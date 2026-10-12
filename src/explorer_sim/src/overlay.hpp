@@ -34,7 +34,8 @@ namespace explorer_sim {
         };
 
         // pictureAspect: width / height of the robot's camera picture.
-        explicit Overlay(float pictureAspect);
+        // windowWidth: in pixels, as the window opens. It limits how large the cards are drawn.
+        Overlay(float pictureAspect, int windowWidth);
 
         // Put everything in its place for a window of this size.
         void layout(int windowWidth, int windowHeight);
@@ -74,7 +75,7 @@ namespace explorer_sim {
         Hud::Label* addHint(const std::string& key, const std::string& what, const std::string& widest);
 
         Hud hud_;
-        float s_;// the display's scale factor: 1 at 100 %, 1.5 at 150 %
+        float s_;// the scale the cards are drawn at: the display's (1 at 100 %, 1.5 at 150 %), if the window has room
         float pictureAspect_;
         Rect picture_;
 
